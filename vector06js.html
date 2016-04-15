@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <style>
+    body {
+        padding: 0;
+        margin: 0;
+        background-color: black;
+    }
+    
+    #canvasdiv {
+        margin: auto;
+        width: 600px;
+        height: 420px;
+        border: 10px solid #111;
+    }
+    
+    .outer {
+        display: table;
+        position: absolute;
+        height: 100%;
+        width: 100%;
+    }
+    
+    .middle {
+        display: table-cell;
+        vertical-align: middle;
+    }
+    
+    .inner {
+        margin-left: auto;
+        margin-right: auto;
+        width: /*whatever width you want*/
+        ;
+    }
+    </style>
+</head>
+
+<body style="padding:0;margin:0; background-color: black;">
+    <script language="JavaScript" src="./i8080-js/i8080.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./tv.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./keyboard.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./i8253.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./ay.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./rom.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <script language="JavaScript" src="./zip.js/WebContent/zip.js" type="text/javascript">
+    <!-- x -->
+    </script>
+    <div class="outer">
+        <div class="middle">
+            <div class="inner" id="canvasdiv">
+                <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;">
+            </div>
+        </div>
+    </div>
+    </div>
+    <script>
+    zip.workerScriptsPath = './zip.js/WebContent/';
+    memory = new Memory();
+    keyboard = new Keyboard();
+    keyboard.Hook();
+    timer = new I8253();
+    ay = new AY();
+    io = new IO(keyboard, timer, memory, ay);
+    cpu = new I8080(memory, io);
+    v06c = new Vector06c(cpu, memory, io, ay);
+    var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
+    if (location.search) {
+        url = location.search.substring(1);
+        console.log("user url=", url);
+    }
+
+    keyboard.onreset = function() {
+        v06c.BlkSbr();    
+    };
+
+    new Loader(url,
+        function(rom, start) {
+            memory.init_from_array(rom, start);
+            v06c.BlkSbr();
+        },
+        function() {
+            console.log("ROM could not be loaded from: ", url);
+
+            new Loader("boot/boots.bin",
+                function(bootrom, start) {
+                    memory.init_from_array(bootrom, 0);
+                    v06c.BlkSbr();
+                },
+                function() {
+                    console.log("Cannot load even boots.bin, im ded");
+                }
+                );
+
+        }
+        );
+    </script>
+
+</html>
