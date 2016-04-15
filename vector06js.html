@@ -12,9 +12,64 @@
     
     #canvasdiv {
         margin: auto;
-        width: 600px;
-        height: 420px;
+        width: 100vw;
+        height: 70vw;
+        max-height: 100vh;
+        max-width: 142vh;
         border: 10px solid #111;
+    }
+
+    #about-glass {
+        opacity: 0;
+        display: none;
+        transition: opacity 0.5s ease-in-out;
+    }
+    
+    #about-panel {
+        margin: auto;
+        width: 30em;
+        height: 50ex;
+        background-color: transparent;
+        padding: 2em 8em 2em 8em;
+    }
+    
+    #about {
+        margin: auto;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+        opacity: 0.8;
+        filter: alpha(opacity=0.8);
+
+        padding-top: 0ex;
+        //line-height: 300%;
+        text-align: center;
+    }
+
+    .hdr1 {
+        padding-top: 1ex;
+        padding-bottom: 1ex;
+        font-family: sans-serif;
+        font-weight: bold;
+        background-color: white;
+        font-size: 28pt;        
+        color: black;
+    }
+    .hdr2 {
+        margin-top: -1ex;
+        font-family: sans-serif;
+        font-size: 24;
+        color: white;
+    }
+
+    .licence {
+        margin-left: 10%;
+        margin-top: 4ex;
+        text-align: left;
+        font-size: 65%;
+        font-family: monospace;
+        color: white;
+        line-height: 100%;
     }
     
     .outer {
@@ -35,10 +90,66 @@
         width: /*whatever width you want*/
         ;
     }
+    
+    .bottomzone {
+        margin-left: 8em;
+        margin-right: 8em;
+    }
+
+    .topzone {
+        margin-left: 8em;
+        margin-right: 8em;
+        margin-top: 1ex;
+        margin-bottom: 1ex;
+        text-align: center;
+        font-family: sans-serif;
+        color: #fff;
+        opacity: 0.5;
+        transition: opacity 0.15s ease-in-out;
+    }
+
+    .topzone:hover {
+        opacity: 1.0;
+        transition: opacity 0.25s ease-in-out;
+    }
+    
+    .fileUpload {
+        position: relative;
+        overflow: hidden;
+        margin: 10px;
+        font-weight: bold;
+        font-family: sans-serif;
+        text-align: center;
+        padding: 1em 0;
+        margin: 1em 0;
+        color: #000;
+        border: 2px dashed #000;
+        border-radius: 7px;
+        cursor: default;
+        background-color: #575;
+    }
+    
+    .fileUpload:hover {
+        color: #300;
+        border-color: #fff;
+        border-style: solid;
+        box-shadow: inset 0 3px 4px #888;
+    }
+    
+    .fileUpload input.upload {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        opacity: 0;
+        filter: alpha(opacity=0);
+    }
     </style>
 </head>
 
-<body style="padding:0;margin:0; background-color: black;">
+<body style="padding:0;margin:0;">
     <script language="JavaScript" src="./i8080-js/i8080.js" type="text/javascript">
     <!-- x -->
     </script>
@@ -60,13 +171,54 @@
     <script language="JavaScript" src="./zip.js/WebContent/zip.js" type="text/javascript">
     <!-- x -->
     </script>
-    <div class="outer">
-        <div class="middle">
-            <div class="inner" id="canvasdiv">
-                <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;">
+    <div class="outer" style="display:table">
+        <div class="topzone" onclick="about(true); return false;">Эмулятор ЭВМ «Вектор-06ц»</div>
+        <div class="inner" id="canvasdiv">
+            <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;" onclick="fullscreen(); return false;" />
+        </div>
+        <div class="bottomzone">
+            <div class="fileUpload">
+                <span>Есть свежий ROM?</span>
+                <input class="upload" type="file" id="fileselect" name="fileselect[]" multiple="multiple" />
             </div>
         </div>
     </div>
+    <div id="about-glass" class="outer" onclick="about(false); return false;">
+        <div class="middle">
+            <div id="about-panel">
+                <div id="about">
+                    <div class="hdr1">vector-06js</div>
+                    <div class="hdr2"><br/>&copy; 2016 Viacheslav Slavinsky<br/>
+                        <a href="http://sensi.org/~svo">sensi.org/~svo</a></div>
+                    <pre class="licence">
+Copyright (c) 2016, Viacheslav Slavinsky
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the Viacheslav Slavinsky nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL VIACHESLAV SLAVINSKY BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                        
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
     zip.workerScriptsPath = './zip.js/WebContent/';
@@ -85,29 +237,72 @@
     }
 
     keyboard.onreset = function() {
-        v06c.BlkSbr();    
+        v06c.BlkSbr();
     };
+
+    var fileselect = document.getElementById("fileselect");
 
     new Loader(url,
         function(rom, start) {
-            memory.init_from_array(rom, start);
-            v06c.BlkSbr();
+            v06c.pause(function() {
+                memory.init_from_array(rom, start);
+                v06c.BlkSbr();
+            });
         },
         function() {
             console.log("ROM could not be loaded from: ", url);
 
             new Loader("boot/boots.bin",
                 function(bootrom, start) {
-                    memory.init_from_array(bootrom, 0);
-                    v06c.BlkSbr();
+                    v06c.pause(function() {
+                        memory.init_from_array(bootrom, 0);
+                        v06c.BlkSbr();
+                    });
                 },
                 function() {
                     console.log("Cannot load even boots.bin, im ded");
                 }
-                );
+            );
 
         }
-        );
+    ).attachDrop(fileselect);
+
+    fullscreen = function(noWarningForNotSupported) {
+        var isFullScreen = document.mozFullScreen || document.webkitIsFullScreen;
+        if (!isFullScreen) {
+            var elem = document.getElementById("canvasdiv");
+            var canvasElem = document.getElementById("canvas");
+
+            if (elem.requestFullScreen) {
+                elem.requestFullScreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullScreen) {
+                elem.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+            } else {
+                if (!(noWarningForNotSupported == true)) alert("Fullscreen not supported. Try Firefox or Chrome.");
+            }
+        } else {
+            if (document.cancelFullScreen) {
+                document.cancelFullScreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitCancelFullScreen) {
+                document.webkitCancelFullScreen();
+            }
+        }
+    }
+
+    about = function(visible) {
+        aboot = document.getElementById("about-glass");
+        if (visible) {
+            aboot.style.display = "table";    
+            aboot.style.opacity = 1.0;
+        } else {
+            aboot.style.opacity = 0.0;
+            aboot.style.display = "none";
+        }
+    }
     </script>
 
 </html>

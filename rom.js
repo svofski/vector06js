@@ -65,5 +65,21 @@ function Loader(url, callback, callback_error) {
         return undefined;
     }
 
+    var initDrop = function(fileselect) {
+        var fileSelectHandler = function(e) {
+            console.log("fileSelectHandler e=", fileselect.files[0]);
+            tryUnzip(fileselect.files[0].name, fileselect.files[0], callback);
+        }
+
+        fileselect.addEventListener("change", fileSelectHandler, false);
+    }
+
+    this.attachDrop = function(fileselect) {
+        if (window.File && window.FileList && window.FileReader) {
+            initDrop(fileselect);
+        }
+    }
+
+
     fetchROM2(url, callback, callback_error);
 }

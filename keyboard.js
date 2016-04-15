@@ -82,6 +82,13 @@ function Keyboard() {
 				if (sym == 8 && this.ss) {
 					sym = 308;
 				}
+				if (sym == 61) {
+					//sym = plus;
+					sym = 187;
+				} else if (sym == 59) {
+					sym = 186;
+					//sym = semicolon;
+				}
 				[col, bit] = keymap[sym];
 				if (col != undefined) {
 					apply(this.matrix, col, bit);

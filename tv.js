@@ -1,4 +1,5 @@
 var debug = false;
+var debug_str = "";
 
 function Memory() {
     this.bytes = new Uint8Array(65536 + 256 * 1024);
@@ -11,6 +12,7 @@ function Memory() {
     page_map = 0;
     page_stack = 0;
 
+    var dbg_ctr = 0;
     this.control_write = function(w8) {
         //console.log("kvaz control_write: ", w8.toString(16));
         mode_stack = (w8 & 0x10) != 0;
@@ -59,7 +61,10 @@ function Memory() {
     }
 
     this.init_from_array = function(array, start_addr) {
-        for (var i = 0; i < array.length; i++) {
+        for (var i = this.bytes.length; --i >= 0;) {
+            this.bytes[i] = 0;
+        }
+        for (var i = 0, end = array.length; i < end; i++) {
             this.write(start_addr + i, array[i], false);
         }
     }
@@ -114,10 +119,6 @@ function IO(keyboard, timer, kvaz, ay) {
                 } else {
                     result = 0xff;
                 }
-                if (debug) {
-                    console.log("in 0x02 result=", result.toString(16),
-                        " PA=", PA.toString(16));
-                }
                 break;
             case 0x03:
                 if ((CW & 0x10) == 0) {
@@ -157,12 +158,6 @@ function IO(keyboard, timer, kvaz, ay) {
     }
 
     this.output = function(port, w8) {
-        // if (debug) {
-        //     console.log("output pre: ", port.toString(16), w8.toString(16));
-        //     if (port == 0 && w8 == 0) {
-        //         //debugger;
-        //     }
-        // }
         outport = port;
         outbyte = w8;
     }
@@ -219,10 +214,10 @@ function IO(keyboard, timer, kvaz, ay) {
                 break;
 
             case 0x0c:
+            case 0x0d:
+            case 0x0e:
+            case 0x0f:
                 this.palettebyte = w8;
-                if (debug) {
-                    console.log("out 0c=", w8, " color=", this.Palette[this.PB & 0x0f].toString(16));
-                }
                 break;
             case 0x10:
                 // kvas 
@@ -289,6 +284,11 @@ function Vector06c(cpu, memory, io, ay) {
     this.PIXELS_HEIGHT = 256;
     this.BORDER_LEFT = this.BORDER_RIGHT = (this.SCREEN_WIDTH - this.PIXELS_WIDTH) / 2;
     this.BORDER_TOP = this.BORDER_BOTTOM = (this.SCREEN_HEIGHT - this.PIXELS_HEIGHT) / 2;
+
+    var pause_request = false;
+    var onpause = undefined;
+    var paused = true;
+
     var bmp;
 
     this.Memory = memory;
@@ -477,14 +477,26 @@ function Vector06c(cpu, memory, io, ay) {
                 if (this.CPU.last_opcode == 0x76) { // 0x76 == hlt
                     this.CPU.pc += 1;
                 }
+                this.CPU.execute(0xf3);         // di
                 this.CPU.execute(0xff); 		// 0xff == rst7
                 instr_time += 16; 				// execution time known
+                //debug_str = "";
             }
 
             var dbg_pc = this.CPU.pc;            
+            // if (debug && dbg_pc == 0x158) {
+            //     debugger;
+            // }
             // execute next instruction and calculate time by rounding up tstates
             this.CPU.instruction(); 
             var dbg_op = this.CPU.last_opcode;
+            // if (debug) {
+            //     debug_str += "pc:" + dbg_pc.toString(16) + "; "
+            //     if (this.CPU.pc == 0) {
+            //         console.log(debug_str);
+            //         debugger;
+            //     }
+            // }
             {
                 var tstates = this.CPU.tstates;
                 for (var i = 0, end = tstates.length; i < end; i += 1) {
@@ -625,9 +637,12 @@ function Vector06c(cpu, memory, io, ay) {
                 // test:bord2
                 if (raster_line == 0 && raster_pixel == 176) {
                     irq = true;
-                } else if (raster_line == 22) {
+                } else if (raster_line == 2) {
                     irq = false;
                 }
+                // } else if (raster_line == 22) {
+                //     irq = false;
+                // }
             }
         }
     }
@@ -654,21 +669,45 @@ function Vector06c(cpu, memory, io, ay) {
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
-            //console.log("timeWaitUntilNextFrame < 0");
             timeWaitUntilNextFrame = 0;
             nextFrameTime = new Date().getTime() + (1000 / frameRate);
         } else {
-            //console.log("timeWaitUntilNextFrame >= 0", timeWaitUntilNextFrame);
             nextFrameTime += (1000 / frameRate);
         }
-        setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
+
+        if (pause_request) {
+            pause_request = false;
+            paused = true;
+            if (onpause) {
+                onpause();
+                onpause = undefined;
+            }
+        } else {
+            setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
+        }
     }
 
     this.initCanvas();
 
     // start the dance
     this.BlkSbr = function() {
-        this.CPU.execute(0xc7); // rst0
+        pause_request = false;
+        paused = false;
+        //this.CPU.execute(0xc7); // rst0
+        this.CPU.pc = 0;
+        this.CPU.iff = false;
+        Timer.Write(3, 0x36);
+        Timer.Write(3, 0x76);
+        Timer.Write(3, 0xb6);
         this.oneFrame();
+    }
+
+    this.pause = function(callback) {
+        if (!paused) {
+            onpause = callback;
+            pause_request = true;
+        } else {
+            callback();
+        }
     }
 }
