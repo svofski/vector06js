@@ -1,10 +1,13 @@
+// vector-06js (c) 2016 Viacheslav Slavinsky
+// Main board
+
 var debug = false;
 var debug_str = "";
 
 function Memory() {
     this.bytes = new Uint8Array(65536 + 256 * 1024);
     for (var i = 0x0000; i < this.bytes.length; i++) {
-        this.bytes[i] = 0; //Math.random() * 256;
+        this.bytes[i] = 0; 
     }
 
     mode_stack = false;
@@ -17,8 +20,13 @@ function Memory() {
         //console.log("kvaz control_write: ", w8.toString(16));
         mode_stack = (w8 & 0x10) != 0;
         mode_map = (w8 & 0x20) != 0;
-        page_map = ((~w8) & 3) + 1;
-        page_stack = (((~w8) & 0xc) >> 2) + 1;
+        page_map = ((w8) & 3) + 1;
+        page_stack = (((w8) & 0xc) >> 2) + 1;
+        // if (mode_map) {
+        //     console.log("kvz page select ", page_map);
+        // } else {
+        //     console.log("kvz nax");
+        // }
     }
 
     // 8000 -> 8000
@@ -31,8 +39,7 @@ function Memory() {
             return addr;
         } else if (mode_stack && stackrq != undefined && stackrq) {
             return addr + (page_stack << 16);
-        }
-        if (mode_map && addr >= 0xa000 && addr < 0xe000) {
+        } else if (mode_map && addr >= 0xa000 && addr < 0xe000) {
             return addr + (page_map << 16);
         }
         return addr;
@@ -88,6 +95,9 @@ function IO(keyboard, timer, kvaz, ay) {
     this.iff = false;
     this.Palette = new Uint32Array(16);
     this.Timer = timer;
+    this.onmodechange = function(mode) {};
+    this.onborderchange = function(border) {};
+    this.ontapeoutchange = function(tape) {};
 
     var CW = 0,
         PA = 0xff,
@@ -178,6 +188,7 @@ function IO(keyboard, timer, kvaz, ay) {
                     } else {
                         PC &= ~(1<<bit);
                     }
+                    this.ontapeoutchange(PC & 1);
                 }
                 // if (debug) {
                 //     console.log("output commit cw = ", CW.toString(16));
@@ -185,9 +196,12 @@ function IO(keyboard, timer, kvaz, ay) {
                 break;
             case 0x01:
                 PC = w8;
+                this.ontapeoutchange(PC & 1);
                 break;
             case 0x02:
                 PB = w8;
+                this.onborderchange(PB & 0x0f);
+                this.onmodechange((PB & 0x10) != 0);
                 break;
             case 0x03:
                 PA = w8;
@@ -289,73 +303,17 @@ function Vector06c(cpu, memory, io, ay) {
     var onpause = undefined;
     var paused = true;
 
-    var bmp;
+    this.bmp = undefined;
 
     this.Memory = memory;
     this.CPU = cpu;
     this.IO = io;
-    Timer = this.IO.Timer;
+    this.Timer = this.IO.Timer;
 
-    // -sound
-    /**
-     * Offset into sndData for next sound sample.
-     */
-    this.sndCount = 0;
-    this.sndReadCount = 0;
-    this.cs = 0;
-
-    /**
-     * Buffer for sound event messages.
-     */
-    this.renderingBufferSize = 8192;
-    this.mask = this.renderingBufferSize - 1;
-    this.renderingBuffer = null;
-    this.sampleRate = null;
-
-    if (typeof AudioContext != "undefined") {
-        console.debug("AudioContext found");
-
-        this.audioContext = new AudioContext();
-        this.sampleRate = this.audioContext.sampleRate;
-
-        this.jsNode = this.audioContext.createScriptProcessor(2048, 0, 2);
-        this.jsNode.connect(this.audioContext.destination);
-        var that = this;
-        this.jsNode.onaudioprocess = function(event) {
-            var diff = (that.sndCount - that.sndReadCount) & that.mask;
-            if (diff >= 2048) {
-                var o = event.outputBuffer;
-                var l = o.getChannelData(0);
-                var r = o.getChannelData(1);
-
-                for (var i = 0; i < 2048;) {
-                    l[i] = r[i] = that.renderingBuffer[that.sndReadCount];
-                    i += 1;
-                    that.sndReadCount += 1;
-                    l[i] = r[i] = that.renderingBuffer[that.sndReadCount];
-                    i += 1;
-                    that.sndReadCount += 1;
-                    l[i] = r[i] = that.renderingBuffer[that.sndReadCount];
-                    i += 1;
-                    that.sndReadCount += 1;
-                    l[i] = r[i] = that.renderingBuffer[that.sndReadCount];
-                    i += 1;
-                    that.sndReadCount += 1;
-                }
-                that.sndReadCount &= that.mask;
-            } else {
-                console.debug("audio starved");
-            }
-        }
-
-        this.hasAudio = true;
-    }
-
-    if (this.hasAudio) {
-        this.renderingBuffer = new Float32Array(this.renderingBufferSize);
-    }
-
-    // -sound
+    this.soundnik = new Soundnik(this);
+    this.renderingBuffer = this.soundnik.renderingBuffer;
+    this.soundRatio = this.soundnik.sampleRate / 1497600.0;
+    this.soundAccu = 0.0;
 
     var w, h, buf8, data2;
     var usingPackedBuffer = false;
@@ -377,21 +335,23 @@ function Vector06c(cpu, memory, io, ay) {
                 console.debug("Using native packed graphics");
                 var bmp2 = cvsDat.data.buffer;
                 buf8 = new Uint8ClampedArray(bmp2);
-                bmp = new Uint32Array(bmp2);
+                this.bmp = new Uint32Array(bmp2);
             } else {
                 console.debug("Using manually unpacked graphics");
                 buf8 = cvsDat.data;
                 for (var loop = 0; loop < buf8.length; loop++) buf8[loop] = 0xFF;
 
-                bmp = typeof(Int32Array) != "undefined" ? new Int32Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT) : new Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT);
+                this.bmp = typeof(Int32Array) != "undefined" ? 
+                    new Int32Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT) : 
+                    new Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT);
             }
         }
 
         if (!usingPackedBuffer) {
             // have to manually unpack ints to bytes
             var fc;
-            for (var i = 0, ix = 0; i < bmp.length; i += 1) {
-                fc = bmp[i];
+            for (var i = 0, ix = 0; i < this.bmp.length; i += 1) {
+                fc = this.bmp[i];
                 buf8[ix + 0] = fc & 0xFF;
                 buf8[ix + 1] = (fc >> 8) & 0xFF;
                 buf8[ix + 2] = (fc >> 16) & 0xFF;
@@ -408,12 +368,12 @@ function Vector06c(cpu, memory, io, ay) {
     // 2 = 4000
     // 3 = 6000
     // addr = {addr[1:0],addr[14:0]}
-    this.fetchPixels = function(column, row, mem, pixels) {
+    this.fetchPixels = function(column, row, mem) {
         var addr = ((column & 0xff) << 8) | (row & 0xff);
-        pixels[3] = mem[0xe000 + addr];
-        pixels[2] = mem[0xc000 + addr];
-        pixels[1] = mem[0xa000 + addr];
-        pixels[0] = mem[0x8000 + addr];
+        this.pixels[3] = mem[0xe000 + addr];
+        this.pixels[2] = mem[0xc000 + addr];
+        this.pixels[1] = mem[0xa000 + addr];
+        this.pixels[0] = mem[0x8000 + addr];
     }
 
     // one cycle 
@@ -445,24 +405,37 @@ function Vector06c(cpu, memory, io, ay) {
     var raster_line = 0;
     var fb_column = 0;
     var fb_row = 0;
-    var pixels = new Uint8Array(4);
-
-    var soundRatio = this.sampleRate / 1497600.0;
-    var soundAccu = 0.0;
+    this.pixels = new Uint8Array(4);
 
     var between = 0;
     var sound = 0;
     var sound_avg_n = 0;
-    var ayAccu = 0;
-    var aysamp = 0.0;
-    var aysamp_avg_n = 0;
 
-    var border_index_cached = this.IO.BorderIndex();
-    var Palette = this.IO.Palette;
+    this.aywrapper = new AYWrapper(ay);
 
-    this.oneInterrupt = function(mem) {
+    //var border_index_cached = this.IO.BorderIndex();
+    this.border_index_cached = 0;
+    self = this;
+    this.IO.onborderchange = function(border) {
+        self.border_index_cached = border;
+    };
+    this.mode512 = false;
+    this.IO.onmodechange = function(mode) {
+        self.mode512 = mode;
+    };
+    this.tapeout = 0;
+    this.IO.ontapeoutchange = function(tape) {
+        self.tapeout = tape;
+    };
+
+    this.Palette = this.IO.Palette;
+
+
+    this.oneInterrupt = function(mem, updateScreen) {
         var index = 0;
         var brk = false;
+        var bmpofs = 0;
+
         for (; !brk;) {
             instr_time = 0;
             commit_time = commit_time_pal = -1;
@@ -514,99 +487,88 @@ function Vector06c(cpu, memory, io, ay) {
             commit_time_pal = commit_time - 20;
 
             // tick the timer (half of cpu cycles)
-            sound += Timer.Count(instr_time / 2);
+            sound += this.Timer.Count(instr_time / 2);
             sound_avg_n += 8; // so that it's not too loud
 
-            // AY step
-            ayAccu += 7 * instr_time;
-            while (ayAccu >= 96) {
-                aysamp += ay.step();
-                aysamp_avg_n += 1;
-                ayAccu -= 96;
-            }
-            //sound += aysamp;
+            this.aywrapper.step(instr_time);
 
-            soundAccu += soundRatio * instr_time / 2;
+            this.soundAccu += this.soundRatio * instr_time / 2;
             between += instr_time;
-            if (soundAccu >= 1.0) {
-                soundAccu -= 1.0;
-                sound = 1.0 * sound / sound_avg_n + aysamp / aysamp_avg_n + 
-					this.IO.TapeOut() + 
+            if (this.soundAccu >= 1.0) {
+                this.soundAccu -= 1.0;
+                sound = 1.0 * sound / sound_avg_n + 
+                    this.aywrapper.unload() + 
+					//this.IO.TapeOut() + 
+                    this.tapeout +
                     Math.random() * 0.005;
-                sound_avg_n = 0;
-                aysamp = 0;
-                aysamp_avg_n = 0;
-                var plus1 = (this.sndCount + 1) & this.mask;
-                if (plus1 != this.sndReadCount) {
-                    this.renderingBuffer[this.sndCount] = sound - 0.5;
-                    this.sndCount = plus1;
-                }
-                sound = 0;
+                this.soundnik.sample(sound - 0.5);
+                sound_avg_n = sound = 0;
             }
 
             // fill pixels
-            var mode512 = this.IO.Mode512();
-            var index_full = 0;
+            //var mode512 = this.IO.Mode512();
+            var index_modeless = 0;
             for (var i = 0, end = instr_time * 4; i < end; i += 1) {
-            	// this offset is important for matching i/o writes 
-            	// (border and palette) and raster
-            	// test:bord2
+                // this offset is important for matching i/o writes 
+                // (border and palette) and raster
+                // test:bord2
                 var rpixel = raster_pixel - 24;                
                 var vborder = (raster_line < 40) || (raster_line >= (40 + 256));                
                 var hborder = (rpixel < (768 - 512) / 2) ||
                     (rpixel >= (768 - (768 - 512) / 2));
                 var border = hborder || vborder;
-
-                if (border) {
-                    index = border_index_cached;
-                    fb_column = 0;
-                } else {
-                    if (rpixel % 16 == 0) {
-                        this.fetchPixels(fb_column, fb_row, mem, pixels);
-                    }
-
-                    // mode 256
-                    if (raster_pixel % 2 == 0) {
-                        index_full = ((pixels[0] & 0x80) >> 4) |
-                            ((pixels[1] & 0x80) >> 5) |
-                            ((pixels[2] & 0x80) >> 6) |
-                            ((pixels[3] & 0x80) >> 7);
-                        pixels[0] <<= 1;
-                        pixels[1] <<= 1;
-                        pixels[2] <<= 1;
-                        pixels[3] <<= 1;
-                    }
-                    if (mode512) {
-                        if (raster_pixel % 2 == 0) {
-                            index = index_full & 0x03;
-                        } else {
-                            index = index_full & 0x0c;
-                        }
+                if (updateScreen) {
+                    if (border) {
+                        index = this.border_index_cached;
+                        fb_column = 0;
                     } else {
-                        index = index_full;
-                    }
+                        if (rpixel % 16 == 0) {
+                            this.fetchPixels(fb_column, fb_row, mem);
+                        }
 
-                    if (rpixel % 16 == 0) {
-                        fb_column++;
+                        // mode 256
+                        if (raster_pixel % 2 == 0) {
+                            index_modeless = ((this.pixels[0] & 0x80) >> 4) |
+                                ((this.pixels[1] & 0x80) >> 5) |
+                                ((this.pixels[2] & 0x80) >> 6) |
+                                ((this.pixels[3] & 0x80) >> 7);
+                            this.pixels[0] <<= 1;
+                            this.pixels[1] <<= 1;
+                            this.pixels[2] <<= 1;
+                            this.pixels[3] <<= 1;
+                        }
+                        if (this.mode512) {
+                            if (raster_pixel % 2 == 0) {
+                                index = index_modeless & 0x03;
+                            } else {
+                                index = index_modeless & 0x0c;
+                            }
+                        } else {
+                            index = index_modeless;
+                        }
+
+                        if (rpixel % 16 == 0) {
+                            fb_column++;
+                        }
                     }
                 }
+
                 // commit regular i/o writes (e.g. border index)
                 // test: bord2
                 if (i == commit_time) {
                     this.IO.commit();
-                    mode512 = this.IO.Mode512();
-                    border_index_cached = this.IO.BorderIndex();
                 }
                 // commit i/o to palette ram
                 // test: bord2
                 if (i == commit_time_pal) {
                     this.IO.commit_palette(index);
                 }
-                // TODO: make this incremental
-                var bmp_x = raster_pixel - 100; // picture horizontal offset
-                if (bmp_x >= 0 && bmp_x < this.SCREEN_WIDTH) {
-                    var bmpofs = raster_line * this.SCREEN_WIDTH + bmp_x;
-                    bmp[bmpofs] = Palette[index];
+                if (updateScreen) {
+                    var bmp_x = raster_pixel - 100; // picture horizontal offset
+                    if (bmp_x >= 0 && bmp_x < this.SCREEN_WIDTH) {
+                        this.bmp[bmpofs] = this.Palette[index];
+                        bmpofs += 1;
+                    }
                 }
 
                 // 22 vsync
@@ -640,9 +602,6 @@ function Vector06c(cpu, memory, io, ay) {
                 } else if (raster_line == 2) {
                     irq = false;
                 }
-                // } else if (raster_line == 22) {
-                //     irq = false;
-                // }
             }
         }
     }
@@ -660,11 +619,40 @@ function Vector06c(cpu, memory, io, ay) {
     }
 
     var nextFrameTime = new Date().getTime();
-    var bytes = this.Memory.bytes;
+    //var bytes = this.Memory.bytes;
+
+    this.twoFrame = function() {
+        var frameRate = 25;
+
+        this.oneInterrupt(this.Memory.bytes, true);
+        this.oneInterrupt(this.Memory.bytes, false);
+        this.displayFrame()
+
+        var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
+        if (timeWaitUntilNextFrame < 0) {
+            timeWaitUntilNextFrame = 0;
+            nextFrameTime = new Date().getTime() + (1000 / frameRate);
+        } else {
+            nextFrameTime += (1000 / frameRate);
+        }
+
+        if (pause_request) {
+            pause_request = false;
+            paused = true;
+            if (onpause) {
+                onpause();
+                onpause = undefined;
+            }
+        } else {
+            setTimeout('v06c.twoFrame()', timeWaitUntilNextFrame);
+        }
+    }
+
+
     this.oneFrame = function() {
         var frameRate = 50;
 
-        this.oneInterrupt(bytes);
+        this.oneInterrupt(this.Memory.bytes, true);
         this.displayFrame()
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
@@ -693,12 +681,12 @@ function Vector06c(cpu, memory, io, ay) {
     this.BlkSbr = function() {
         pause_request = false;
         paused = false;
-        //this.CPU.execute(0xc7); // rst0
         this.CPU.pc = 0;
+        this.CPU.sp = 0;
         this.CPU.iff = false;
-        Timer.Write(3, 0x36);
-        Timer.Write(3, 0x76);
-        Timer.Write(3, 0xb6);
+        this.Timer.Write(3, 0x36);
+        this.Timer.Write(3, 0x76);
+        this.Timer.Write(3, 0xb6);
         this.oneFrame();
     }
 

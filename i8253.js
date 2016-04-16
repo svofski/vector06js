@@ -54,7 +54,9 @@ function Counter() {
                         value = reload;
                         out = out == 0 ? 1 : 0;
                     }
-                } else {
+                } 
+                else
+                {
                     for (var i = 0; i < cycles; i++) {
                         value -= (value & 1) == 0 ? 2 :
                             out == 0 ? 1 : 3;

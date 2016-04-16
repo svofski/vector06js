@@ -1,4 +1,8 @@
-// modified AY implementation from emuscriptoria
+// vector-06js (c) 2016 Viacheslav Slavinsky
+// AY kernel
+// 
+// Modified AY implementation from Emuscriptoria project
+// https://sourceforge.net/projects/emuscriptoria/
 function AY() {
 		var rmask= [0xff, 0x0f, 0xff, 0x0f,
 				0xff, 0x0f, 0x1f, 0xff,
@@ -91,4 +95,28 @@ function AY() {
 			}
 			return ayr[ayreg];
 		}
+}
+
+function AYWrapper(ay) {
+	this.ay = ay;
+
+	this.ayAccu = 0;
+	this.aysamp = 0;
+	this.aysamp_avg_n = 0;
+
+	this.step = function(instr_time) {
+        this.ayAccu += 7 * instr_time;
+        while (this.ayAccu >= 96) {
+            this.aysamp += ay.step();
+            this.aysamp_avg_n += 1;
+            this.ayAccu -= 96;
+        }
+	}
+
+	this.unload = function() {
+		var result = this.aysamp / this.aysamp_avg_n;
+		this.aysamp = this.aysamp_avg_n = 0;
+		return result;
+	}
+
 }
