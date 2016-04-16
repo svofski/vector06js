@@ -3,87 +3,95 @@
 // 
 // Modified AY implementation from Emuscriptoria project
 // https://sourceforge.net/projects/emuscriptoria/
+
+"use strict";
+
 function AY() {
-		var rmask= [0xff, 0x0f, 0xff, 0x0f,
+		AY.prototype.rmask= [0xff, 0x0f, 0xff, 0x0f,
 				0xff, 0x0f, 0x1f, 0xff,
 				0x1f, 0x1f, 0x1f, 0xff,
 				0xff, 0x0f, 0xff, 0xff];
-		var amp= [0,      0.0137, 0.0205, 0.0291,
+		AY.prototype.amp= [0,      0.0137, 0.0205, 0.0291,
 			  0.0423, 0.0618, 0.0847, 0.1369,
 			  0.1691, 0.2647, 0.3527, 0.4499,
 			  0.5704, 0.6873, 0.8482, 1];
-		var ayr= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			  0, 0, 0]; // last 3 values for tone counter
-		var envc = 0, envv = 0, envx = 0;
-		var ay13 = 0;
-		var tons = 0;
-		var noic = 0, noiv = 0, noir = 1;
 
-		function cstep(ch) {
-		  if( ++ayr[ch+16] >= (ayr[ch<<1] | ayr[1|ch<<1]<<8) )
-			ayr[ch+16]= 0,
-			tons^= 1 << ch;
-		  return  ( ( ayr[7] >> ch   | tons >> ch )
-				  & ( ayr[7] >> ch+3 | noiv       )
-				  & 1 )  * amp[ ayr[8+ch] & 0x10
-						   ? envv
-						   : ayr[8+ch] & 0x0f ];
+		this.ayr= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			  0, 0, 0]; // last 3 values for tone counter
+		this.envc = 0;
+		this.envv = 0;
+		this.envx = 0;
+		this.ay13 = 0;
+		this.tons = 0;
+		this.noic = 0;
+		this.noiv = 0;
+		this.noir = 1;
+
+		this.cstep = function(ch) {
+		  if( ++this.ayr[ch+16] >= (this.ayr[ch<<1] | this.ayr[1|ch<<1]<<8) )
+			this.ayr[ch+16]= 0,
+			this.tons^= 1 << ch;
+		  return  ( ( this.ayr[7] >> ch   | this.tons >> ch )
+				  & ( this.ayr[7] >> ch+3 | this.noiv       )
+				  & 1 )  * AY.prototype.amp[ this.ayr[8+ch] & 0x10
+						   ? this.envv
+						   : this.ayr[8+ch] & 0x0f ];
 		}
 
-		function estep() {
-		  if( envx >> 4 ){
-			if( ay13 & 1 )
-			  return 7.5*((ay13>>1 ^ ay13) & 2);
-			envx= 0;
-			ay13^= ay13<<1 & 4;
+		this.estep = function() {
+		  if( this.envx >> 4 ){
+			if( this.ay13 & 1 )
+			  return 7.5*((this.ay13>>1 ^ this.ay13) & 2);
+			this.envx= 0;
+			this.ay13^= this.ay13<<1 & 4;
 		  }
-		  return  ay13 & 4
-				  ? envx++
-				  : 15 - envx++;
+		  return  this.ay13 & 4
+				  ? this.envx++
+				  : 15 - this.envx++;
 		}
 
 		this.step = function() {
-		  if( ++envc >= (ayr[11]<<1 | ayr[12]<<9) )
-			envc= 0,
-			envv= estep();
-		  if( ++noic >= ayr[6]<<1 )
-			noic= 0,
-			noiv= noir & 1,
-			noir= (noir^noiv*0x24000)>>1;
-		  return (cstep(0) + cstep(1) + cstep(2)) / 3;
+		  if( ++this.envc >= (this.ayr[11]<<1 | this.ayr[12]<<9) )
+			this.envc= 0,
+			this.envv= this.estep();
+		  if( ++this.noic >= this.ayr[6]<<1 )
+			this.noic= 0,
+			this.noiv= this.noir & 1,
+			this.noir= (this.noir^this.noiv*0x24000)>>1;
+		  return (this.cstep(0) + this.cstep(1) + this.cstep(2)) / 3;
 		}
 
 		this.aymute = function() {
-		  if( ++envc >= (ayr[11]<<1 | ayr[12]<<9) ){
-			envc= 0;
-			if( envx >> 4 && ~ay13 & 1 )
-			  envx= 0,
-			  ay13^= ay13<<1 & 4;
+		  if( ++this.envc >= (this.ayr[11]<<1 | this.ayr[12]<<9) ){
+			this.envc= 0;
+			if( this.envx >> 4 && ~this.ay13 & 1 )
+			  this.envx= 0,
+			  this.ay13^= this.ay13<<1 & 4;
 		  }
-		  if( ++noic >= ayr[6]<<1 )
-			noic= 0,
-			noiv= noir & 1,
-			noir= (noir^noiv*0x24000)>>1;
-		  if( ++ayr[16] >= (ayr[0] | ayr[1]<<8) )
-			ayr[16]= 0,
-			tons^= 1;
-		  if( ++ayr[17] >= (ayr[2] | ayr[3]<<8) )
-			ayr[17]= 0,
-			tons^= 2;
-		  if( ++ayr[18] >= (ayr[4] | ayr[5]<<8) )
-			ayr[18]= 0,
-			tons^= 4;
+		  if( ++this.noic >= this.ayr[6]<<1 )
+			this.noic= 0,
+			this.noiv= this.noir & 1,
+			this.noir= (this.noir^this.noiv*0x24000)>>1;
+		  if( ++this.ayr[16] >= (this.ayr[0] | this.ayr[1]<<8) )
+			this.ayr[16]= 0,
+			this.tons^= 1;
+		  if( ++this.ayr[17] >= (this.ayr[2] | this.ayr[3]<<8) )
+			this.ayr[17]= 0,
+			this.tons^= 2;
+		  if( ++this.ayr[18] >= (this.ayr[4] | this.ayr[5]<<8) )
+			this.ayr[18]= 0,
+			this.tons^= 4;
 		}
 
-		var ayreg = 0;
+		this.ayreg = 0;
 		this.write = function(addr, val) {
 			if (addr == 1) {
-				ayreg = val & 0x0f;
+				this.ayreg = val & 0x0f;
 			} else {
-				ayr[ayreg]= val & rmask[ayreg];
-				if (ayreg == 13 )
-					envx= 0,
-					ay13= val & 8
+				this.ayr[this.ayreg]= val & AY.prototype.rmask[this.ayreg];
+				if (this.ayreg == 13 )
+					this.envx= 0,
+					this.ay13= val & 8
 						  ? 1 | val>>1 & 2 | val & 4
 						  : val;
 			}
@@ -91,9 +99,9 @@ function AY() {
 
 		this.read = function(addr) {
 			if (addr == 1) {
-				return ayreg;
+				return this.ayreg;
 			}
-			return ayr[ayreg];
+			return this.ayr[this.ayreg];
 		}
 }
 

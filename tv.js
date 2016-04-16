@@ -1,6 +1,8 @@
 // vector-06js (c) 2016 Viacheslav Slavinsky
 // Main board
 
+"use strict";
+
 var debug = false;
 var debug_str = "";
 
@@ -10,18 +12,18 @@ function Memory() {
         this.bytes[i] = 0; 
     }
 
-    mode_stack = false;
-    mode_map = false;
-    page_map = 0;
-    page_stack = 0;
+    this.mode_stack = false;
+    this.mode_map = false;
+    this.page_map = 0;
+    this.page_stack = 0;
 
     var dbg_ctr = 0;
     this.control_write = function(w8) {
         //console.log("kvaz control_write: ", w8.toString(16));
-        mode_stack = (w8 & 0x10) != 0;
-        mode_map = (w8 & 0x20) != 0;
-        page_map = ((w8) & 3) + 1;
-        page_stack = (((w8) & 0xc) >> 2) + 1;
+        this.mode_stack = (w8 & 0x10) != 0;
+        this.mode_map = (w8 & 0x20) != 0;
+        this.page_map = ((w8) & 3) + 1;
+        this.page_stack = (((w8) & 0xc) >> 2) + 1;
         // if (mode_map) {
         //     console.log("kvz page select ", page_map);
         // } else {
@@ -34,23 +36,23 @@ function Memory() {
     // c000 -> 8002
     // e000 -> 8003
     // 8001 -> 8004
-    bigram_select = function(addr, stackrq) {
-        if (!(mode_map | mode_stack)) {
+    this.bigram_select = function(addr, stackrq) {
+        if (!(this.mode_map || this.mode_stack)) {
             return addr;
-        } else if (mode_stack && stackrq != undefined && stackrq) {
-            return addr + (page_stack << 16);
-        } else if (mode_map && addr >= 0xa000 && addr < 0xe000) {
-            return addr + (page_map << 16);
+        } else if (this.mode_stack && stackrq != undefined && stackrq) {
+            return addr + (this.page_stack << 16);
+        } else if (this.mode_map && addr >= 0xa000 && addr < 0xe000) {
+            return addr + (this.page_map << 16);
         }
         return addr;
     }
 
     this.read = function(addr, stackrq) {
-        return this.bytes[bigram_select(addr & 0xffff, stackrq)];
+        return this.bytes[this.bigram_select(addr & 0xffff, stackrq)];
     }
 
     this.write = function(addr, w8, stackrq) {
-        this.bytes[bigram_select(addr & 0xffff, stackrq)] = w8;
+        this.bytes[this.bigram_select(addr & 0xffff, stackrq)] = w8;
     }
 
     this.load_file = function(files, name) {
@@ -318,27 +320,27 @@ function Vector06c(cpu, memory, io, ay) {
     var w, h, buf8, data2;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
-        if (bufferCanvas === undefined || this.SCREEN_WIDTH != w || this.SCREEN_HEIGHT != h) {
-            bufferCanvas = document.createElement("canvas");
-            w = bufferCanvas.width = this.SCREEN_WIDTH;
-            h = bufferCanvas.height = this.SCREEN_HEIGHT;
-            bufferContext = bufferCanvas.getContext("2d");
-            console.log("bufferContext=", bufferContext.canvas);
+        if (this.bufferCanvas === undefined || this.SCREEN_WIDTH != w || this.SCREEN_HEIGHT != h) {
+            this.bufferCanvas = document.createElement("canvas");
+            w = this.bufferCanvas.width = this.SCREEN_WIDTH;
+            h = this.bufferCanvas.height = this.SCREEN_HEIGHT;
+            this.bufferContext = this.bufferCanvas.getContext("2d");
+            console.log("bufferContext=", this.bufferContext.canvas);
 
-            cvsDat = bufferContext.getImageData(0, 0, this.SCREEN_WIDTH, this.SCREEN_HEIGHT);
+            this.cvsDat = this.bufferContext.getImageData(0, 0, this.SCREEN_WIDTH, this.SCREEN_HEIGHT);
             //screenCanvas.width = bufferCanvas.width * 1.67;
-            screenCanvas.width = bufferCanvas.width * 1; //1.67;
-            screenCanvas.height = bufferCanvas.height * 1; //(2/1.67);
+            this.screenCanvas.width = this.bufferCanvas.width * 1; //1.67;
+            this.screenCanvas.height = this.bufferCanvas.height * 1; //(2/1.67);
 
-            usingPackedBuffer = (typeof Uint8ClampedArray !== "undefined") && (cvsDat.data.buffer);
+            usingPackedBuffer = (typeof Uint8ClampedArray !== "undefined") && (this.cvsDat.data.buffer);
             if (usingPackedBuffer) {
                 console.debug("Using native packed graphics");
-                var bmp2 = cvsDat.data.buffer;
+                var bmp2 = this.cvsDat.data.buffer;
                 buf8 = new Uint8ClampedArray(bmp2);
                 this.bmp = new Uint32Array(bmp2);
             } else {
                 console.debug("Using manually unpacked graphics");
-                buf8 = cvsDat.data;
+                buf8 = this.cvsDat.data;
                 for (var loop = 0; loop < buf8.length; loop++) buf8[loop] = 0xFF;
 
                 this.bmp = typeof(Int32Array) != "undefined" ? 
@@ -358,8 +360,9 @@ function Vector06c(cpu, memory, io, ay) {
                 ix += 4;
             }
         }
-        bufferContext.putImageData(cvsDat, 0, 0);
-        screenContext.drawImage(bufferCanvas, 0, 0, screenCanvas.width, screenCanvas.height);
+        this.bufferContext.putImageData(this.cvsDat, 0, 0);
+        this.screenContext.drawImage(this.bufferCanvas, 0, 0, 
+            this.screenCanvas.width, this.screenCanvas.height);
     }
 
     // 1/2/3/4 1/2/3/4
@@ -604,19 +607,19 @@ function Vector06c(cpu, memory, io, ay) {
                 }
             }
         }
-    }
+    };
 
     this.initCanvas = function() {
-        screenCanvas = document.getElementById("canvas");
+        this.screenCanvas = document.getElementById("canvas");
 
-        if (!screenCanvas.getContext) {
+        if (!this.screenCanvas.getContext) {
             alert("Your web browser does not support the 'canvas' tag.\nPlease upgrade/change your browser.");
         }
-        screenContext = screenCanvas.getContext("2d");
-        bufferCanvas = undefined;
+        this.screenContext = this.screenCanvas.getContext("2d");
+        this.bufferCanvas = undefined;
         if (this.displayFrame) this.displayFrame();
-        console.log("initCanvas: screnCanvas=", screenCanvas);
-    }
+        console.log("initCanvas: screnCanvas=", this.screenCanvas);
+    };
 
     var nextFrameTime = new Date().getTime();
     //var bytes = this.Memory.bytes;
@@ -626,7 +629,7 @@ function Vector06c(cpu, memory, io, ay) {
 
         this.oneInterrupt(this.Memory.bytes, true);
         this.oneInterrupt(this.Memory.bytes, false);
-        this.displayFrame()
+        this.displayFrame();
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
@@ -646,14 +649,14 @@ function Vector06c(cpu, memory, io, ay) {
         } else {
             setTimeout('v06c.twoFrame()', timeWaitUntilNextFrame);
         }
-    }
+    };
 
 
     this.oneFrame = function() {
         var frameRate = 50;
 
         this.oneInterrupt(this.Memory.bytes, true);
-        this.displayFrame()
+        this.displayFrame();
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
@@ -673,7 +676,7 @@ function Vector06c(cpu, memory, io, ay) {
         } else {
             setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
         }
-    }
+    };
 
     this.initCanvas();
 
@@ -688,7 +691,7 @@ function Vector06c(cpu, memory, io, ay) {
         this.Timer.Write(3, 0x76);
         this.Timer.Write(3, 0xb6);
         this.oneFrame();
-    }
+    };
 
     this.pause = function(callback) {
         if (!paused) {
@@ -697,5 +700,5 @@ function Vector06c(cpu, memory, io, ay) {
         } else {
             callback();
         }
-    }
+    };
 }
