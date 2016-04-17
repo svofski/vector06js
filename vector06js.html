@@ -168,6 +168,7 @@
     <!-- x -->
     </script>
     <script language="JavaScript" src="./sound.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./fd1793.js" type="text/javascript"></script>
 
     <script language="JavaScript" src="./zip.js/WebContent/zip.js" type="text/javascript">
     <!-- x -->
@@ -230,7 +231,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     keyboard.Hook();
     timer = new I8253();
     ay = new AY();
-    io = new IO(keyboard, timer, memory, ay);
+    var fd1793 = Floppy().FD1793;
+    floppy = new fd1793();
+    //floppy._log = true;
+    io = new IO(keyboard, timer, memory, ay, floppy);
     cpu = new I8080(memory, io);
     v06c = new Vector06c(cpu, memory, io, ay);
     var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
@@ -238,13 +242,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         url = location.search.substring(1);
         console.log("user url=", url);
     }
+    boot = undefined;
 
-    keyboard.onreset = function() {
-        v06c.BlkSbr();
+    keyboard.onreset = function(attach_rom) {
+        if (attach_rom && boot) {
+            memory.attach_boot(boot);
+        }
+        v06c.BlkSbr(attach_rom);
     };
 
     var fileselect = document.getElementById("fileselect");
-
+    
     new Loader(url,
         function(rom, start) {
             v06c.pause(function() {
@@ -257,8 +265,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
             new Loader("boot/boots.bin",
                 function(bootrom, start) {
+                    boot = bootrom;
                     v06c.pause(function() {
-                        memory.init_from_array(bootrom, 0);
+                        memory.init_from_array([], 0);
+                        memory.attach_boot(bootrom);
                         v06c.BlkSbr();
                     });
                 },
@@ -266,7 +276,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                     console.log("Cannot load even boots.bin, im ded");
                 }
             );
+        },
+        function(image, start) {
+            console.log("Smells like a floppy image: ", url);
+            floppy.loadDsk(0, url, image);
 
+            new Loader("boot/unzagr.bin",
+                function(bootrom, start) {
+                    boot = bootrom;
+                    v06c.pause(function() {
+                        memory.init_from_array([], 0);
+                        memory.attach_boot(bootrom);
+                        v06c.BlkSbr(true);
+                    });
+                },
+                function() {
+                    console.log("no boot/boots.bin to load floppy with");
+                }
+            );
         }
     ).attachDrop(fileselect);
 

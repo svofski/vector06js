@@ -4,7 +4,7 @@
 // Load ROM from url: url can be direct rom/r0m, or an url of a zip
 // file containing a rom/r0m. First suitable entry will be used.
 //
-function Loader(url, callback, callback_error) {
+function Loader(url, callback, callback_error, callback_fdd) {
     var fetchROM2 = function(url, callback, callback_error) {
         var oReq = new XMLHttpRequest();
         oReq.open("GET", url, true);
@@ -51,15 +51,23 @@ function Loader(url, callback, callback_error) {
                                     "start=", start.toString(16));
                                 extract(entries[i], callback, start);
                                 break;
+                            } else {
+                                if (lower.endsWith("fdd")) {
+                                    extract(entries[i], callback_fdd, 0);
+                                }
                             }
                         }
                     }
                 });
             },
             function(error) {
-                console.log("unzip", error, " - trying as rom");
-                var start = url.toLowerCase().endsWith("r0m") ? 0 : 0x100;
-                readData(blob, callback, start);
+                console.log("unzip", error, " - trying as rom or fdd");
+                if (url.toLowerCase().endsWith("fdd")) {
+                    readData(blob, callback_fdd, 0);
+                } else {
+                    var start = url.toLowerCase().endsWith("r0m") ? 0 : 0x100;
+                    readData(blob, callback, start);
+                }
             });
 
         return undefined;

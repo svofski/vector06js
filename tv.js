@@ -8,6 +8,8 @@ var debug_str = "";
 
 function Memory() {
     this.bytes = new Uint8Array(65536 + 256 * 1024);
+    this.bootbytes = undefined;
+
     for (var i = 0x0000; i < this.bytes.length; i++) {
         this.bytes[i] = 0; 
     }
@@ -48,6 +50,9 @@ function Memory() {
     }
 
     this.read = function(addr, stackrq) {
+        if (this.bootbytes && addr < this.bootbytes.length) {
+            return this.bootbytes[addr];
+        }
         return this.bytes[this.bigram_select(addr & 0xffff, stackrq)];
     }
 
@@ -78,6 +83,17 @@ function Memory() {
         }
     }
 
+    this.attach_boot = function(array) {
+        this.bootbytes = new Uint8Array(array.length);
+        for (var i = array.length; --i >= 0;) {
+            this.bootbytes[i] = array[i];
+        }
+    }
+
+    this.detach_boot = function() {
+        this.bootbytes = undefined;
+    }
+
     this.dump = function() {
         var s = "";
         var addr = 0;
@@ -93,7 +109,7 @@ function Memory() {
     }
 }
 
-function IO(keyboard, timer, kvaz, ay) {
+function IO(keyboard, timer, kvaz, ay, fdc) {
     this.iff = false;
     this.Palette = new Uint32Array(16);
     this.Timer = timer;
@@ -164,6 +180,22 @@ function IO(keyboard, timer, kvaz, ay) {
             case 0x14:
             case 0x15:
                 result = ay.read(port & 1);
+                break;
+
+            case 0x18:  // fdc data
+                result = fdc.read(3);
+                break;
+            case 0x19:  // fdc sector
+                result = fdc.read(2);
+                break;
+            case 0x1a:  // fdc track
+                result = fdc.read(1);
+                break;
+            case 0x1b:  // fdc status
+                result = fdc.read(0);
+                break;
+            case 0x1c:  // fdc control - readonly
+                //result = fdc.read(4);
                 break;
         }
         return result;
@@ -242,6 +274,22 @@ function IO(keyboard, timer, kvaz, ay) {
             case 0x14:
             case 0x15:
                 ay.write(port & 1, w8);
+                break;
+
+            case 0x18:  // fdc data
+                fdc.write(3, w8);
+                break;
+            case 0x19:  // fdc sector
+                fdc.write(2, w8);
+                break;
+            case 0x1a:  // fdc track
+                fdc.write(1, w8);
+                break;
+            case 0x1b:  // fdc command
+                fdc.write(0, w8);
+                break;
+            case 0x1c:  // fdc control
+                fdc.write(4, w8);
                 break;
         }
     }
@@ -438,14 +486,14 @@ function Vector06c(cpu, memory, io, ay) {
         var index = 0;
         var brk = false;
         var bmpofs = 0;
-
+        between = 0;
         for (; !brk;) {
             instr_time = 0;
             commit_time = commit_time_pal = -1;
 
             if (irq && this.CPU.iff) {
                 irq = false;
-                between = 0;
+                //between = 0;
                 // i8080js does not have halt mode, but loops on halt instruction
                 // if in halt, advance pc + 1 and sideload rst7 instruction
                 // this is a fairly close equivalent to what real 8080 is doing
@@ -459,10 +507,31 @@ function Vector06c(cpu, memory, io, ay) {
                 //debug_str = "";
             }
 
-            var dbg_pc = this.CPU.pc;            
-            // if (debug && dbg_pc == 0x158) {
+            var dbg_pc = this.CPU.pc;        
+            // if (dbg_pc == 0) {
+            //     console.log("pc = 0", between);
+            // }
+            // if (dbg_pc === 0x2d7) {
+            //     console.log("jmp eternal_loop", between);
+            // }
+            // if (dbg_pc === 0x1e6) {
+            //     console.log("eternal_loop:", between);
+            // }
+            // if (dbg_pc === 0x285) {
+            //     console.log("inside:", between, "pc=", dbg_pc.toString(16),
+            //         " sp=", this.CPU.sp.toString(16));
+            // }
+            // if (dbg_pc === 0x28d) {
+            //     console.log("inside2:", between, "pc=", dbg_pc.toString(16),
+            //         " sp=", this.CPU.sp.toString(16), " iff=", this.CPU.iff, " raster_line=", raster_line, " irq=", irq);
             //     debugger;
             // }
+
+            // if (dbg_pc === 0x299) {
+            //     console.log("player return:", between, "pc=", dbg_pc.toString(16),
+            //         " sp=", this.CPU.sp.toString(16), " iff=", this.CPU.iff, " raster_line=", raster_line, " irq=", irq);
+            // }
+
             // execute next instruction and calculate time by rounding up tstates
             this.CPU.instruction(); 
             var dbg_op = this.CPU.last_opcode;
@@ -600,10 +669,10 @@ function Vector06c(cpu, memory, io, ay) {
                 }
                 // irq time
                 // test:bord2
-                if (raster_line == 0 && raster_pixel == 176) {
+                if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
                     irq = true;
-                } else if (raster_line == 2) {
-                    irq = false;
+                // } else if (raster_line == 22) {
+                //     irq = false;
                 }
             }
         }
@@ -681,15 +750,19 @@ function Vector06c(cpu, memory, io, ay) {
     this.initCanvas();
 
     // start the dance
-    this.BlkSbr = function() {
+    this.BlkSbr = function(keep_rom) {
         pause_request = false;
         paused = false;
         this.CPU.pc = 0;
         this.CPU.sp = 0;
         this.CPU.iff = false;
+        if (!keep_rom) {
+            this.Memory.detach_boot();
+        }
         this.Timer.Write(3, 0x36);
         this.Timer.Write(3, 0x76);
         this.Timer.Write(3, 0xb6);
+        ay.reset();
         this.oneFrame();
     };
 

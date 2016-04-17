@@ -23,17 +23,22 @@ function Keyboard() {
 	this.keyDown = function(e) {
 		var keyCode = document.all? event.keyCode:e.which;
 		keyboard.cancelKeyEvent(e);
-		if (keyCode == 123) { // F12
-			that.onreset();
+		if (keyCode === 122 || keyCode === 123) { // F11, F12
+			that.onreset(keyCode === 122);
+		} else {
+			keyboard.applyKey(keyCode,false);
 		}
-		keyboard.applyKey(keyCode,false);
 		return false;
 	}
 
 	this.keyUp = function(e) {
 		var keyCode = document.all? event.keyCode:e.which;
 		keyboard.cancelKeyEvent(e);
-		keyboard.applyKey(keyCode,true);
+		if (keyCode === 122 || keyCode === 123) {
+			// ignore reset keys
+		} else {
+			keyboard.applyKey(keyCode,true);
+		}
 		return false;
 	}  
 
@@ -89,6 +94,7 @@ function Keyboard() {
 					sym = 186;
 					//sym = semicolon;
 				}
+				//console.log("sym=", sym, " keymap: ", keymap[sym]);
 				[col, bit] = keymap[sym];
 				if (col != undefined) {
 					apply(this.matrix, col, bit);

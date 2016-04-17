@@ -16,16 +16,18 @@ function AY() {
 			  0.1691, 0.2647, 0.3527, 0.4499,
 			  0.5704, 0.6873, 0.8482, 1];
 
-		this.ayr= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			  0, 0, 0]; // last 3 values for tone counter
-		this.envc = 0;
-		this.envv = 0;
-		this.envx = 0;
-		this.ay13 = 0;
-		this.tons = 0;
-		this.noic = 0;
-		this.noiv = 0;
-		this.noir = 1;
+		this.reset = function() {
+			this.ayr= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				  0, 0, 0]; // last 3 values for tone counter
+			this.envc = 0;
+			this.envv = 0;
+			this.envx = 0;
+			this.ay13 = 0;
+			this.tons = 0;
+			this.noic = 0;
+			this.noiv = 0;
+			this.noir = 1;
+		};
 
 		this.cstep = function(ch) {
 		  if( ++this.ayr[ch+16] >= (this.ayr[ch<<1] | this.ayr[1|ch<<1]<<8) )
@@ -103,6 +105,8 @@ function AY() {
 			}
 			return this.ayr[this.ayreg];
 		}
+
+		this.reset();
 }
 
 function AYWrapper(ay) {
