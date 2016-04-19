@@ -117,7 +117,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     this.onborderchange = function(border) {};
     this.ontapeoutchange = function(tape) {};
 
-    var CW = 0,
+    var CW = 0x98,
         PA = 0xff,
         PB = 0xff,
         PC = 0xff;
@@ -212,6 +212,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
             // PIA 
             case 0x00:
                 CW = w8;
+		PA = PB = PC = 0;
                 if ((CW & 0x80) == 0) {
                     // port C BSR: 
                     //   bit 0: 1 = set, 0 = reset
@@ -342,12 +343,15 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
 }
 
 function Vector06c(cpu, memory, io, ay) {
-    this.SCREEN_WIDTH = 600;
-    this.SCREEN_HEIGHT = 312;
+    this.SCREEN_WIDTH = 512 + 64;//600; //512 + 32;//600;
+    //this.SCREEN_HEIGHT = 312;
+	this.SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
+	this.FIRST_VISIBLE_LINE = 312 - this.SCREEN_HEIGHT;
     this.PIXELS_WIDTH = 512;
     this.PIXELS_HEIGHT = 256;
     this.BORDER_LEFT = this.BORDER_RIGHT = (this.SCREEN_WIDTH - this.PIXELS_WIDTH) / 2;
     this.BORDER_TOP = this.BORDER_BOTTOM = (this.SCREEN_HEIGHT - this.PIXELS_HEIGHT) / 2;
+	this.CENTER_OFFSET = 120;
 
     var pause_request = false;
     var onpause = undefined;
@@ -635,8 +639,8 @@ function Vector06c(cpu, memory, io, ay) {
                 if (i == commit_time_pal) {
                     this.IO.commit_palette(index);
                 }
-                if (updateScreen) {
-                    var bmp_x = raster_pixel - 100; // picture horizontal offset
+                if (updateScreen && (raster_line >= this.FIRST_VISIBLE_LINE)) {
+                    var bmp_x = raster_pixel - this.CENTER_OFFSET; //100; // picture horizontal offset
                     if (bmp_x >= 0 && bmp_x < this.SCREEN_WIDTH) {
                         this.bmp[bmpofs] = this.Palette[index];
                         bmpofs += 1;
@@ -669,6 +673,7 @@ function Vector06c(cpu, memory, io, ay) {
                 }
                 // irq time
                 // test:bord2
+                //if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
                 if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
                     irq = true;
                 // } else if (raster_line == 22) {
@@ -765,6 +770,12 @@ function Vector06c(cpu, memory, io, ay) {
         ay.reset();
         this.oneFrame();
     };
+
+	this.resume = function() {
+		pause_request = false;
+		paused = false;
+		this.oneFrame();
+	}
 
     this.pause = function(callback) {
         if (!paused) {
