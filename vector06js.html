@@ -10,13 +10,137 @@
         background-color: black;
     }
     
+    body.fullpage {
+        overflow: hidden;
+    }
+    
     #canvasdiv {
         margin: auto;
         width: 100vw;
-        height: 70vw;
+        height: 75vw;
         max-height: 100vh;
-        max-width: 142vh;
+        max-width: 133.33vh;
         border: 10px solid #111;
+    }
+    
+    #canvasdiv.fullpage {
+        border: 0px;
+        margin: auto;
+    }
+    
+    #chooser-glass {
+        display: none;
+    }
+    
+    #chooser-panelcontainer {
+        margin: auto;
+        width: 33em;
+        height: 60ex;
+        background-color: transparent;
+        color: #fff;
+        padding: 2em 8em 2em 8em;
+        font-family: sans-serif;
+        font-size: large;
+    }
+    
+    #chooser-backdrop {
+        position: fixed;
+        top: 5%;
+        bottom: 5%;
+        left: 5%;
+        right: 5%;
+        #background-color: black;
+        z-index: 1;
+        /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#000000+0,000000+52,7db9e8+100&0.9+0,0.8+52,0.01+100 */
+        background: -moz-linear-gradient(left, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.8) 52%, rgba(125, 185, 232, 0.01) 100%);
+        /* FF3.6-15 */
+        background: -webkit-linear-gradient(left, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.8) 52%, rgba(125, 185, 232, 0.01) 100%);
+        /* Chrome10-25,Safari5.1-6 */
+        background: linear-gradient(to right, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.8) 52%, rgba(125, 185, 232, 0.01) 100%);
+        /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+        filter: progid: DXImageTransform.Microsoft.gradient( startColorstr='#e6000000', endColorstr='#037db9e8', GradientType=1);
+        /* IE6-9 */
+    }
+    
+    #chooser-paper {
+        z-index: 2;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+    
+    #chooser-panelcontainer.fullpage {
+        border: 0px;
+        margin: 5%;
+        padding: 5%;
+        width: 80%;
+        height: 74%;
+    }
+    
+    #chooserpanel {
+        margin: 1%;
+        overflow: auto;
+        font-family: monospace;
+        font-weight: bold;
+    }
+    
+    #chooserpanel a {
+        color: ivory;
+        text-decoration: none;
+        padding-left: 0.25em;
+        padding-right: 1em;
+    }
+    
+    #chooserpanel a:hover {
+        background-color: #ff0;
+        color: #000;
+    }
+    
+    #chooserpanel ul {
+        line-height: 3ex;
+        list-style: none;
+        margin-left: 0;
+        padding-left: 32px;
+        text-indent: -32px;
+    }
+    
+    #chooserpanel li:before {
+        padding-right: 32px;
+        padding-top: 7px;
+        padding-bottom: 4px;
+    }
+    
+    .chooser-li-rom:before {
+        content: " ";
+        background: url('cassette-32x32.png') transparent no-repeat;
+    }
+    
+    .chooser-li-fdd:before {
+        content: " ";
+        background: url('diskette-32x32.png') transparent no-repeat;
+    }
+    
+    .chooser-li-wtf:before {
+        content: " ";
+    }
+    
+    .chooserhdr {
+        font-size: x-large;
+        font-family: impact;
+        background-color: yellowgreen;
+        color: black;
+        padding-left: 10px;
+        /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#dbd406+0,dbd406+100&0.9+0,0.8+31,0.2+67,0.01+100 */
+        background: -moz-linear-gradient(left, rgba(219, 212, 6, 0.9) 0%, rgba(219, 212, 6, 0.8) 31%, rgba(219, 212, 6, 0.2) 67%, rgba(219, 212, 6, 0.01) 100%);
+        /* FF3.6-15 */
+        background: -webkit-linear-gradient(left, rgba(219, 212, 6, 0.9) 0%, rgba(219, 212, 6, 0.8) 31%, rgba(219, 212, 6, 0.2) 67%, rgba(219, 212, 6, 0.01) 100%);
+        /* Chrome10-25,Safari5.1-6 */
+        background: linear-gradient(to right, rgba(219, 212, 6, 0.9) 0%, rgba(219, 212, 6, 0.8) 31%, rgba(219, 212, 6, 0.2) 67%, rgba(219, 212, 6, 0.01) 100%);
+        /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+        filter: progid: DXImageTransform.Microsoft.gradient( startColorstr='#e6dbd406', endColorstr='#03dbd406', GradientType=1);
+        /* IE6-9 */
     }
     
     #about-glass {
@@ -27,10 +151,15 @@
     
     #about-panel {
         margin: auto;
-        width: 30em;
-        height: 50ex;
+        width: 33em;
+        height: 60ex;
         background-color: transparent;
         padding: 2em 8em 2em 8em;
+    }
+    
+    #about-panel a {
+        color: yellow;
+        text-decoration: underline;
     }
     
     #about {
@@ -57,8 +186,17 @@
     .hdr2 {
         margin-top: -1ex;
         font-family: sans-serif;
-        font-size: 24;
+        font-size: small;
         color: white;
+    }
+    
+    .acks {
+        margin-top: 2ex;
+        margin-left: 1em;
+        font-family: sans-serif;
+        font-size: small;
+        color: white;
+        text-align: left;
     }
     
     .licence {
@@ -169,19 +307,30 @@
     </script>
     <script language="JavaScript" src="./sound.js" type="text/javascript"></script>
     <script language="JavaScript" src="./fd1793.js" type="text/javascript"></script>
-
     <script language="JavaScript" src="./zip.js/WebContent/zip.js" type="text/javascript">
     <!-- x -->
     </script>
-    <div class="outer" style="display:table">
+    <div class="outer" id="outerdiv" style="display:table">
         <div class="topzone" onclick="about(true); return false;">Эмулятор ЭВМ «Вектор-06ц»</div>
         <div class="inner" id="canvasdiv">
-            <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;" onclick="fullscreen(); return false;" />
+            <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;" onclick="window.parent.fullscreen(); return false;" />
         </div>
         <div class="bottomzone">
             <div class="fileUpload">
                 <span>Есть свежий ROM?</span>
                 <input class="upload" type="file" id="fileselect" name="fileselect[]" multiple="multiple" />
+            </div>
+        </div>
+    </div>
+    <div id="chooser-glass" class="outer">
+        <div class="middle">
+            <div id="chooser-panelcontainer">
+                <div id="chooser-paper">
+                    <div class="chooserhdr">SELECT FILE</div>
+                    <div id="chooserpanel">
+                    </div>
+                </div>
+                <div id="chooser-backdrop"> </div>
             </div>
         </div>
     </div>
@@ -191,9 +340,15 @@
                 <div id="about">
                     <div class="hdr1">vector-06js</div>
                     <div class="hdr2">
-                        <br/>&copy; 2016 Viacheslav Slavinsky
+                        <br/>Online <a href="https://en.wikipedia.org/wiki/Vector-06C">Vector-06c</a> emulator &copy; 2016 Viacheslav Slavinsky, <a href="http://sensi.org/~svo">sensi.org/~svo</a></div>
+                    <div class="acks">
+                        This project benefits from efforts of other people by reusing their code, intact or with modifications:
+                        <br/> &#8226; <a href="https://github.com/begoon/i8080-js">i8080-js</a> CPU by Alexander Demin
+                        <br/> &#8226; AY-3-8910 code from <a href="https://sourceforge.net/projects/emuscriptoria/">EmuScriptoria</a> by Antonio Villena
+                        <br/> &#8226; FD1793 from <a href="https://github.com/teki/jstvc">Videoton TV-Computer</a> by Bela Babik
+                        <br/> &#8226; Some essential boilerplate code from <a href="http://mdawson.net/vic20chrome/vic20.php">Javascript Vic-20</a> by Matt Dawson
                         <br/>
-                        <a href="http://sensi.org/~svo">sensi.org/~svo</a></div>
+                    </div>
                     <pre class="licence">
 Copyright (c) 2016, Viacheslav Slavinsky
 All rights reserved.
@@ -225,77 +380,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         </div>
     </div>
     <script>
-    zip.workerScriptsPath = './zip.js/WebContent/';
-    memory = new Memory();
-    keyboard = new Keyboard();
-    keyboard.Hook();
-    timer = new I8253();
-    ay = new AY();
-    var fd1793 = Floppy().FD1793;
-    floppy = new fd1793();
-    //floppy._log = true;
-    io = new IO(keyboard, timer, memory, ay, floppy);
-    cpu = new I8080(memory, io);
-    v06c = new Vector06c(cpu, memory, io, ay);
-    var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
-    if (location.search) {
-        url = location.search.substring(1);
-        console.log("user url=", url);
-    }
-    boot = undefined;
-
-    keyboard.onreset = function(attach_rom) {
-        if (attach_rom && boot) {
-            memory.attach_boot(boot);
-        }
-        v06c.BlkSbr(attach_rom);
-    };
-
-    var fileselect = document.getElementById("fileselect");
-    
-    new Loader(url,
-        function(rom, start) {
-            v06c.pause(function() {
-                memory.init_from_array(rom, start);
-                v06c.BlkSbr();
-            });
-        },
-        function() {
-            console.log("ROM could not be loaded from: ", url);
-
-            new Loader("boot/boots.bin",
-                function(bootrom, start) {
-                    boot = bootrom;
-                    v06c.pause(function() {
-                        memory.init_from_array([], 0);
-                        memory.attach_boot(bootrom);
-                        v06c.BlkSbr();
-                    });
-                },
-                function() {
-                    console.log("Cannot load even boots.bin, im ded");
-                }
-            );
-        },
-        function(image, start) {
-            console.log("Smells like a floppy image: ", url);
-            floppy.loadDsk(0, url, image);
-
-            new Loader("boot/unzagr.bin",
-                function(bootrom, start) {
-                    boot = bootrom;
-                    v06c.pause(function() {
-                        memory.init_from_array([], 0);
-                        memory.attach_boot(bootrom);
-                        v06c.BlkSbr(true);
-                    });
-                },
-                function() {
-                    console.log("no boot/boots.bin to load floppy with");
-                }
-            );
-        }
-    ).attachDrop(fileselect);
 
     fullscreen = function(noWarningForNotSupported) {
         var isFullScreen = document.mozFullScreen || document.webkitIsFullScreen;
@@ -322,6 +406,134 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             }
         }
     }
+    function FullScreener() {
+        this.exec = function() {
+            fullscreen();
+        }
+    }
+
+    fullscreener = new FullScreener();
+
+
+    
+    zip.workerScriptsPath = './zip.js/WebContent/';
+    memory = new Memory();
+    keyboard = new Keyboard();
+    keyboard.Hook();
+    timer = new I8253();
+    ay = new AY();
+    var fd1793 = Floppy().FD1793;
+    floppy = new fd1793();
+    //floppy._log = true;
+    io = new IO(keyboard, timer, memory, ay, floppy);
+    cpu = new I8080(memory, io);
+    v06c = new Vector06c(cpu, memory, io, ay);
+    var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
+
+    var chooserParent = "chooser-glass";
+    if (location.search) {
+        url = location.search.substring(1);
+        if (url[0] === "i") {
+            document.body.className += " fullpage";
+            var canvasdiv = document.getElementById("canvasdiv");
+            canvasdiv.className = "fullpage";
+            var outer = document.getElementById("outerdiv");
+            outer.parentNode.replaceChild(canvasdiv, outer);
+
+        // reparent chooser too
+        var chooserdiv = document.getElementById("chooser-panelcontainer");
+        chooserdiv.style.position = "absolute";
+        chooserdiv.style.top = "0";
+        chooserdiv.style.left = "0";
+        chooserdiv.className += " fullpage";
+        canvasdiv.parentNode.appendChild(chooserdiv);
+        chooserParent = "chooser-panelcontainer";
+        chooserdiv.style.display = "none";
+
+            url = url.substring(2);
+
+
+        }
+        console.log("user url=", url);
+    }
+    boot = undefined;
+
+    _onfocus = function() {
+        v06c.soundnik.mute(false);
+        v06c.resume();
+    };
+    _onblur = function() {
+        v06c.soundnik.mute(true);
+        v06c.pause(function() {
+        });
+    };
+    window.addEventListener('load', function() {
+        window.addEventListener('focus', _onfocus);
+        window.addEventListener('blur', _onblur);
+    });
+
+    keyboard.onreset = function(attach_rom) {
+        if (attach_rom && boot) {
+            memory.attach_boot(boot);
+        }
+        v06c.BlkSbr(attach_rom);
+    };
+
+    var fileselect = document.getElementById("fileselect");
+
+
+    var loadUserRom = function() {
+    new Loader(url,
+        function(rom, start) {
+            v06c.pause(function() {
+                memory.init_from_array(rom, start);
+                v06c.BlkSbr();
+            });
+        },
+        function() {
+            console.log("ROM could not be loaded from: ", url);
+
+        },
+        function(image, start) {
+            console.log("Smells like a floppy image: ", url);
+            floppy.loadDsk(0, url, image);
+        v06c.BlkSbr(true);
+
+            var nu = new Loader("boot/unzagr.bin",
+                function(bootrom, start) {
+                    boot = bootrom;
+                    v06c.pause(function() {
+                        memory.init_from_array([], 0);
+                        memory.attach_boot(bootrom);
+                        v06c.BlkSbr(true);
+                    });
+                },
+                function() {
+                    console.log("no boot/boots.bin to load floppy with");
+                }
+            );
+        },
+        chooserParent, "chooserpanel"
+    ).attachDrop(fileselect);
+    }
+
+
+    new Loader("boot/boots.bin",
+        function(bootrom, start) {
+            boot = bootrom;
+            v06c.pause(function() {
+                memory.init_from_array([], 0);
+                memory.attach_boot(bootrom);
+                v06c.BlkSbr(true);
+
+        loadUserRom();
+            });
+        },
+        function() {
+            console.log("Cannot load bootloader, not a problem for loading roms");
+        }
+    );
+    
 
     about = function(visible) {
         aboot = document.getElementById("about-glass");
