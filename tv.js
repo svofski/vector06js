@@ -212,7 +212,6 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
             // PIA 
             case 0x00:
                 CW = w8;
-                PA = PB = PC = 0;		        
                 if ((CW & 0x80) == 0) {
                     // port C BSR: 
                     //   bit 0: 1 = set, 0 = reset
@@ -224,6 +223,8 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
                         PC &= ~(1<<bit);
                     }
                     this.ontapeoutchange(PC & 1);
+                } else {
+                    PA = PB = PC = 0;               
                 }
                 // if (debug) {
                 //     console.log("output commit cw = ", CW.toString(16));
