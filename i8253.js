@@ -11,14 +11,19 @@ function Counter() {
     this.mode_int = 0;
     this.loaded = false;
 
+    this.catchup = 0;
+
+
     this.Latch = function(w8) {
 		latch_value = this.value;
     }
 
-    this.SetMode = function(new_mode) {
+    this.SetMode = function(new_mode, new_latch_mode) {
         this.mode_int = new_mode;
+        latch_mode = new_latch_mode;
         write_state = 0;
         this.loaded = false;
+        this.catchup = -4;
     }
 
     this.Count = function(cycles) {
@@ -26,6 +31,17 @@ function Counter() {
             this.out = 0;
             return 0;
         }
+
+        // this hack shows better results in I8253.rom but makes SkyNet whine
+        // and emulator detection detects it anyway
+        // if (this.catchup < 0) {
+        //     this.catchup += cycles;
+        //     if (this.catchup > 0) {
+        //         cycles = this.catchup;
+        //         this.catchup = 0;
+        //     }
+        // }
+
         switch (this.mode_int) {
             case 0: // Interrupt on terminal count
                 for (var i = 0; i < cycles && this.value > 0; i++) {
@@ -67,6 +83,7 @@ function Counter() {
             case 5: // Hardware triggered strobe
                 break;
         }
+
         return this.out;
     }
 
@@ -153,7 +170,7 @@ function I8253() {
 		if (latch_set == 0) {
         	ctr.Latch(latch_set);
 		} else {
-			ctr.SetMode(mode_set);
+			ctr.SetMode(mode_set, latch_set);
 		}
     }
 
@@ -184,5 +201,22 @@ function I8253() {
             default:
                 return this.counters[addr & 3].read_value();
         }
+    }
+}
+
+function TimerWrapper(timer) {
+    this.timer = timer;
+    this.sound = 0;
+    this.average_count = 0;
+
+    this.step = function(cycles) {
+        this.sound += this.timer.Count(cycles);
+        this.average_count += 8; // so that it's not too loud
+    }
+
+    this.unload = function() {
+        var result = this.sound / this.average_count;
+        this.sound = this.average_count = 0;
+        return result;
     }
 }

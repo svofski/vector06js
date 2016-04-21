@@ -306,8 +306,8 @@ function Floppy() {
         this._address = new Uint8Array(8);
         this._addressidx = 0;
 
-        this.LINGER_BEFORE = -20;
-        this.LINGER_AFTER = 20;
+        this.LINGER_BEFORE = 0;
+        this.LINGER_AFTER = 2;
         this._lingertime = this.LINGER_AFTER + 1;
         this._stepdir = 1;
     }

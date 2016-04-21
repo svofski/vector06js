@@ -212,7 +212,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
             // PIA 
             case 0x00:
                 CW = w8;
-		PA = PB = PC = 0;
+                PA = PB = PC = 0;		        
                 if ((CW & 0x80) == 0) {
                     // port C BSR: 
                     //   bit 0: 1 = set, 0 = reset
@@ -450,23 +450,15 @@ function Vector06c(cpu, memory, io, ay) {
     //
     // ay clock: 1.75Mhz, 7/48 of pixelclock
     //
-    var screen_time = 0;
-    var instr_time = 0;
-    var commit_time = -1;
-    var commit_time_pal = -1;
-    var irq = true;
+    this.irq = false;
 
-    var raster_pixel = 0;
-    var raster_line = 0;
-    var fb_column = 0;
-    var fb_row = 0;
+    // var raster_pixel = 0;
+    // var raster_line = 0;
+    // var fb_column = 0;
+    // var fb_row = 0;
     this.pixels = new Uint8Array(4);
-
-    var between = 0;
-    var sound = 0;
-    var sound_avg_n = 0;
-
     this.aywrapper = new AYWrapper(ay);
+    this.timerwrapper = new TimerWrapper(this.Timer);
 
     //var border_index_cached = this.IO.BorderIndex();
     this.border_index_cached = 0;
@@ -484,24 +476,32 @@ function Vector06c(cpu, memory, io, ay) {
     };
 
     this.Palette = this.IO.Palette;
-
+    this.between = 0;
 
     this.oneInterrupt = function(mem, updateScreen) {
+        var raster_pixel = 0;
+        var raster_line = 0;
+        var fb_column = 0;
+        var fb_row = 0;
+
         var index = 0;
         var brk = false;
         var bmpofs = 0;
-        between = 0;
+        var commit_time = -1;
+        var commit_time_pal = -1;
+        var instr_time = 0;
+
+        this.between = 0;
         for (; !brk;) {
             instr_time = 0;
             commit_time = commit_time_pal = -1;
 
-            if (irq && this.CPU.iff) {
-                irq = false;
-                //between = 0;
+            if (this.irq && this.CPU.iff) {
+                this.irq = false;
+                //this.between = 0;
                 // i8080js does not have halt mode, but loops on halt instruction
                 // if in halt, advance pc + 1 and sideload rst7 instruction
                 // this is a fairly close equivalent to what real 8080 is doing
-                //if (mem[this.CPU.pc] == 0x76) { // 0x76 == hlt
                 if (this.CPU.last_opcode == 0x76) { // 0x76 == hlt
                     this.CPU.pc += 1;
                 }
@@ -512,40 +512,10 @@ function Vector06c(cpu, memory, io, ay) {
             }
 
             var dbg_pc = this.CPU.pc;        
-            // if (dbg_pc == 0) {
-            //     console.log("pc = 0", between);
-            // }
-            // if (dbg_pc === 0x2d7) {
-            //     console.log("jmp eternal_loop", between);
-            // }
-            // if (dbg_pc === 0x1e6) {
-            //     console.log("eternal_loop:", between);
-            // }
-            // if (dbg_pc === 0x285) {
-            //     console.log("inside:", between, "pc=", dbg_pc.toString(16),
-            //         " sp=", this.CPU.sp.toString(16));
-            // }
-            // if (dbg_pc === 0x28d) {
-            //     console.log("inside2:", between, "pc=", dbg_pc.toString(16),
-            //         " sp=", this.CPU.sp.toString(16), " iff=", this.CPU.iff, " raster_line=", raster_line, " irq=", irq);
-            //     debugger;
-            // }
-
-            // if (dbg_pc === 0x299) {
-            //     console.log("player return:", between, "pc=", dbg_pc.toString(16),
-            //         " sp=", this.CPU.sp.toString(16), " iff=", this.CPU.iff, " raster_line=", raster_line, " irq=", irq);
-            // }
 
             // execute next instruction and calculate time by rounding up tstates
             this.CPU.instruction(); 
             var dbg_op = this.CPU.last_opcode;
-            // if (debug) {
-            //     debug_str += "pc:" + dbg_pc.toString(16) + "; "
-            //     if (this.CPU.pc == 0) {
-            //         console.log(debug_str);
-            //         debugger;
-            //     }
-            // }
             {
                 var tstates = this.CPU.tstates;
                 for (var i = 0, end = tstates.length; i < end; i += 1) {
@@ -563,22 +533,19 @@ function Vector06c(cpu, memory, io, ay) {
             commit_time_pal = commit_time - 20;
 
             // tick the timer (half of cpu cycles)
-            sound += this.Timer.Count(instr_time / 2);
-            sound_avg_n += 8; // so that it's not too loud
-
+            this.timerwrapper.step(instr_time / 2);
             this.aywrapper.step(instr_time);
 
             this.soundAccu += this.soundRatio * instr_time / 2;
-            between += instr_time;
+            this.between += instr_time;
             if (this.soundAccu >= 1.0) {
                 this.soundAccu -= 1.0;
-                sound = 1.0 * sound / sound_avg_n + 
+                var sound = 1.0 * this.timerwrapper.unload() + 
                     this.aywrapper.unload() + 
-					//this.IO.TapeOut() + 
                     this.tapeout +
                     Math.random() * 0.005;
+
                 this.soundnik.sample(sound - 0.5);
-                sound_avg_n = sound = 0;
             }
 
             // fill pixels
@@ -640,7 +607,7 @@ function Vector06c(cpu, memory, io, ay) {
                     this.IO.commit_palette(index);
                 }
                 if (updateScreen && (raster_line >= this.FIRST_VISIBLE_LINE)) {
-                    var bmp_x = raster_pixel - this.CENTER_OFFSET; //100; // picture horizontal offset
+                    var bmp_x = raster_pixel - this.CENTER_OFFSET; // picture horizontal offset
                     if (bmp_x >= 0 && bmp_x < this.SCREEN_WIDTH) {
                         this.bmp[bmpofs] = this.Palette[index];
                         bmpofs += 1;
@@ -673,11 +640,8 @@ function Vector06c(cpu, memory, io, ay) {
                 }
                 // irq time
                 // test:bord2
-                //if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
                 if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
-                    irq = true;
-                // } else if (raster_line == 22) {
-                //     irq = false;
+                    this.irq = true;
                 }
             }
         }
