@@ -674,9 +674,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             aboot.style.opacity = 0.0;
             //aboot.style.display = "none";
         }
-    }
-    if (window.parent.registerHook) {
-        window.parent.registerHook('about', about)
+    };
+    blksbr = function(reboot) {
+        keyboard.onreset(reboot);
+    };
+    if (window.parent.registerHooks) {
+        window.parent.registerHooks({'about': about, 
+                                     'blksbr': blksbr});
     }
     </script>
 
