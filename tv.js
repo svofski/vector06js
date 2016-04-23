@@ -202,8 +202,18 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     }
 
     this.output = function(port, w8) {
-        outport = port;
-        outbyte = w8;
+        switch(port) {
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+            this.Timer.Write((~port & 3), w8);
+            break;
+        default:
+            outport = port;
+            outbyte = w8;
+            break;
+        }
     }
 
 
@@ -256,12 +266,12 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
                 PA2 = w8;
                 break;
                 // Timer
-            case 0x08:
-            case 0x09:
-            case 0x0a:
-            case 0x0b:
-                this.Timer.Write((~port & 3), w8);
-                break;
+            // case 0x08:
+            // case 0x09:
+            // case 0x0a:
+            // case 0x0b:
+            //     this.Timer.Write((~port & 3), w8);
+            //     break;
 
             case 0x0c:
             case 0x0d:
@@ -479,6 +489,8 @@ function Vector06c(cpu, memory, io, ay) {
     this.Palette = this.IO.Palette;
     this.between = 0;
 
+    this.instr_time = 0;
+
     this.oneInterrupt = function(mem, updateScreen) {
         var raster_pixel = 0;
         var raster_line = 0;
@@ -490,11 +502,11 @@ function Vector06c(cpu, memory, io, ay) {
         var bmpofs = 0;
         var commit_time = -1;
         var commit_time_pal = -1;
-        var instr_time = 0;
+        //var this.instr_time = 0;
 
         this.between = 0;
         for (; !brk;) {
-            instr_time = 0;
+            //this.instr_time = 0;
             commit_time = commit_time_pal = -1;
 
             if (this.irq && this.CPU.iff) {
@@ -508,12 +520,11 @@ function Vector06c(cpu, memory, io, ay) {
                 }
                 this.CPU.execute(0xf3);         // di
                 this.CPU.execute(0xff); 		// 0xff == rst7
-                instr_time += 16; 				// execution time known
+                this.instr_time += 16; 				// execution time known
                 //debug_str = "";
             }
 
-            var dbg_pc = this.CPU.pc;        
-
+            var dbg_pc = this.CPU.pc;    
             // execute next instruction and calculate time by rounding up tstates
             this.CPU.instruction(); 
             var dbg_op = this.CPU.last_opcode;
@@ -521,27 +532,31 @@ function Vector06c(cpu, memory, io, ay) {
                 var tstates = this.CPU.tstates;
                 for (var i = 0, end = tstates.length; i < end; i += 1) {
                     if (tstates[i] > 4) {
-                        instr_time += 8;
+                        this.instr_time += 8;
                     } else {
-                        instr_time += 4;
+                        this.instr_time += 4;
                     }
+                    // if out was executed, commit it at this moment
                     if (dbg_op == 0xd3 && i == 1) {
-                        commit_time = instr_time - 1;
+                        commit_time = this.instr_time - 1;
                     }
                 }
             }
-            commit_time = commit_time * 4 + 4;
-            commit_time_pal = commit_time - 20;
+            if (commit_time != -1) {
+                commit_time = commit_time * 4 + 4;
+                commit_time_pal = commit_time - 20;
+            }
 
             // tick the timer (half of cpu cycles)
-            this.timerwrapper.step(instr_time / 2);
-            this.aywrapper.step(instr_time);
+            //this.timerwrapper.step(this.instr_time / 2);
 
-            this.soundAccu += this.soundRatio * instr_time / 2;
-            this.between += instr_time;
+            this.aywrapper.step(this.instr_time);
+
+            this.soundAccu += this.soundRatio * this.instr_time / 2;
             if (this.soundAccu >= 1.0) {
                 this.soundAccu -= 1.0;
-                var sound = 1.0 * this.timerwrapper.unload() + 
+                var sound = 
+                    1.0 * this.timerwrapper.unload() + 
                     this.aywrapper.unload() + 
                     this.tapeout +
                     Math.random() * 0.005;
@@ -552,7 +567,8 @@ function Vector06c(cpu, memory, io, ay) {
             // fill pixels
             //var mode512 = this.IO.Mode512();
             var index_modeless = 0;
-            for (var i = 0, end = instr_time * 4; i < end; i += 1) {
+            var i;
+            for (i = 0, end = this.instr_time * 4; i < end && !brk; i += 1) {
                 // this offset is important for matching i/o writes 
                 // (border and palette) and raster
                 // test:bord2
@@ -645,6 +661,10 @@ function Vector06c(cpu, memory, io, ay) {
                     this.irq = true;
                 }
             }
+            var wrap = this.instr_time - i/4;
+            this.timerwrapper.step((this.instr_time - wrap) / 2);
+            this.between += this.instr_time - wrap;
+            this.instr_time = wrap;
         }
     };
 

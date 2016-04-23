@@ -1,7 +1,6 @@
 "use strict";
 
 function Counter() {
-    var reload = 0;
     var latch_value = 0;    
     var write_state = 0;
     var latch_mode = 3;
@@ -9,74 +8,141 @@ function Counter() {
     this.out = 1;
     this.value = 0;
     this.mode_int = 0;
-    this.loaded = false;
+    this.armed = false;
 
-    this.catchup = 0;
+    this.write_lsb = 0;
+    this.write_msb = 0;
+    this.loadvalue = undefined;
+    this.load = false;
+    this.enabled = false;
+    this.borrow = 0;
 
+    const WRITE_DELAY = 8;
+    const LATCH_DELAY = 6;
+    const READ_DELAY = 0;
 
     this.Latch = function(w8) {
+        this.Count(LATCH_DELAY);
+        this.borrow = LATCH_DELAY;
 		latch_value = this.value;
     }
 
     this.SetMode = function(new_mode, new_latch_mode) {
-        this.mode_int = new_mode;
+        this.Count(WRITE_DELAY);
+        this.borrow = WRITE_DELAY;
+
+        if ((new_mode & 0x04) == 2) {
+            this.mode_int = 2;
+        } else if ((new_mode & 0x04) == 3) {
+            this.mode_int = 3;
+        } else {
+            this.mode_int = new_mode;
+        }
+
+        switch(this.mode_int) {
+            case 0:
+                this.out = 0;
+                this.armed = true;
+                this.enabled = false;
+                break;
+            case 1:
+                this.out = 1;
+                this.enabled = false;
+                this.armed = true;
+                break;
+            case 2:
+                this.out = 1;
+                this.enabled = false;
+                break;
+            default:
+                this.out = 1;
+                this.enabled = false;
+
+                break;
+        }
+        this.load = false;
         latch_mode = new_latch_mode;
         write_state = 0;
-        this.loaded = false;
-        this.catchup = -4;
     }
 
     this.Count = function(cycles) {
-        if (!this.loaded) {
-            this.out = 0;
-            return 0;
+        if (this.borrow !== 0) {
+            cycles -= this.borrow;
+            if (cycles < 0) {
+                this.borrow = -cycles;
+            } else {
+                this.borrow = 0;
+            }
         }
-
-        // this hack shows better results in I8253.rom but makes SkyNet whine
-        // and emulator detection detects it anyway
-        // if (this.catchup < 0) {
-        //     this.catchup += cycles;
-        //     if (this.catchup > 0) {
-        //         cycles = this.catchup;
-        //         this.catchup = 0;
-        //     }
-        // }
-
+        if (cycles <= 0) {
+            return this.out;
+        }
         switch (this.mode_int) {
             case 0: // Interrupt on terminal count
-                for (var i = 0; i < cycles && this.value > 0; i++) {
-                    this.value--;
+                if (this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+                    this.load = false;
                 }
-                if (this.value == 0) {
-                    this.out = 1;
+                if (this.enabled) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += 65535;
+                        if (this.armed) {
+                            this.out = 1;
+                            this.armed = false;
+                        }
+                    }
                 }
                 break;
             case 1: // Programmable one-shot
-                for (var i = 0; i < cycles && this.value > 0; i += 1) {
-                    this.value--;
+                if (!this.enabled && this.load) {
+                    //this.value = this.loadvalue;
+                    this.enabled = true;
+                    cycles -= 3;
                 }
-                this.out = this.value > 0 ? 1 : 0;
+                this.load = false;
+                if (this.enabled && cycles > 0) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += this.loadvalue;
+                    }
+                }
+
                 break;
             case 2: // Rate generator
-				this.out = 1;
-				for (var i = 0; i < cycles; i+=1) {
-					if (--this.value == 0) {
-						this.value = reload;
-						this.out = 0;
-					}
-				}
+                if (!this.enabled && this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+                }
+                this.load = false;
+                if (this.enabled) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += this.loadvalue;
+                    }
+                }
+                // out will go low for one clock pulse but in our machine it should not be 
+                // audible
                 break;
             case 3: // Square wave generator
-            	if ((this.value & 1) == 1) {
-            		this.value -= this.out == 0 ? 1 : 3;
-            		--cycles;
-            	}
+                if (!this.enabled && this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+                }
+                this.load = false;
+                if (this.enabled && cycles > 0) {
+                	if ((this.value & 1) == 1) {
+                		this.value -= this.out == 0 ? 3 : 1;
+                		--cycles;
+                	}
 
-            	this.value -= cycles * 2;
-            	if (this.value <= 0) {
-            		this.value += reload;
-            		this.out = this.out == 0 ? 1 : 0;
-            	}
+                	this.value -= cycles * 2;
+                	if (this.value <= 0) {
+                		this.value += this.loadvalue;
+                		this.out = this.out == 0 ? 1 : 0;
+                	}
+                }
                 break;
             case 4: // Software triggered strobe
                 break;
@@ -90,63 +156,65 @@ function Counter() {
     this.SetMode(0);
 
     this.write_value = function(w8) {
-        this.loaded = false;
+        this.Count(WRITE_DELAY);
+        this.borrow = WRITE_DELAY;
+
         if (latch_mode == 3) {
-            // lsb, msb
+            // lsb, msb             
             switch (write_state) {
                 case 0:
-                    this.value = w8 & 0xff;
+                    this.write_lsb = w8;
                     write_state = 1;
                     break;
                 case 1:
-                    this.value = (this.value | (w8 << 8)) & 0xffff;
+                    this.write_msb = w8;
                     write_state = 0;
-                    reload = this.value;
-                    this.loaded = true;
+                    this.loadvalue = ((this.write_msb << 8) & 0xffff) | (this.write_lsb & 0xff);
+                    this.load = true;
                     break;
             }
         } else if (latch_mode == 1) {
             // lsb only
             this.value = (this.value & 0xff00) | w8;
             this.value &= 0xffff;
-            reload = this.value;
-            this.loaded = true;
+            this.loadvalue = this.value;
+            this.load = true;
         } else if (latch_mode == 2) {
             // msb only	
             this.value = (this.value & 0x00ff) | (w8 << 8);
             this.value &= 0xffff;
-            reload = this.value;
-            this.loaded = true;
+            this.loadvalue = this.value;
+            this.load = true;
         }
     }
 
     this.read_value = function() {
+        this.Count(READ_DELAY);
+        this.borrow = READ_DELAY;
+
 		switch (latch_mode) {
 		case 0:
-			switch(write_state) {
-			case 0:
-				write_state = 1;
-				return latch_value & 0xff;
-			case 1:
-				write_state = 0;
-				return (latch_value >> 8) & 0xff;
-			}
-			alert("impossibru");
+			// impossibru
 			break;
 		case 1:
-			return this.value & 0xff;
+            var value = latch_value ? latch_value : this.value;
+            latch_value = undefined; 
+			return value & 0xff;
 		case 2:
-			return (this.value >> 8) & 0xff;
+            var value = latch_value ? latch_value : this.value;
+            latch_value = undefined; 
+			return (value >> 8) & 0xff;
 		case 3:
+            var value = latch_value ? latch_value : this.value;
 			switch(write_state) {
 			case 0:
 				write_state = 1;
-				return this.value & 0xff;
+				return value & 0xff;
 			case 1:
+                latch_value = undefined;
 				write_state = 0;
-				return (this.value >> 8) & 0xff;
+				return (value >> 8) & 0xff;
 			}
-			alert("impossibru");
 			break;
 		}
     }
@@ -180,8 +248,8 @@ function I8253() {
 
     this.Count = function(cycles) {
         return this.counters[0].Count(cycles) +
-         	this.counters[1].Count(cycles) +
-         	this.counters[2].Count(cycles);
+         	 this.counters[1].Count(cycles) +
+         	 this.counters[2].Count(cycles);
 
     }
 
