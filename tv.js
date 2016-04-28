@@ -116,6 +116,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     this.onmodechange = function(mode) {};
     this.onborderchange = function(border) {};
     this.ontapeoutchange = function(tape) {};
+    this.onruslat = function(on) {};
 
     var CW = 0x98,
         PA = 0xff,
@@ -216,13 +217,14 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
         }
     }
 
-
     this.realoutput = function(port, w8) {
         switch (port) {
             // PIA 
             case 0x00:
                 CW = w8;
+                var ruslat = PC & 8;
                 if ((CW & 0x80) == 0) {
+
                     // port C BSR: 
                     //   bit 0: 1 = set, 0 = reset
                     //   bit 1-3: bit number
@@ -236,13 +238,20 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
                 } else {
                     PA = PB = PC = 0;               
                 }
+                if (((PC & 8) != ruslat) && this.onruslat) {
+                    this.onruslat((PC & 8) == 0);
+                }
                 // if (debug) {
                 //     console.log("output commit cw = ", CW.toString(16));
                 // }
                 break;
             case 0x01:
+                var ruslat = PC & 8;
                 PC = w8;
                 this.ontapeoutchange(PC & 1);
+                if (((PC & 8) != ruslat) && this.onruslat) {
+                    this.onruslat((PC & 8) == 0);
+                }
                 break;
             case 0x02:
                 PB = w8;
@@ -354,15 +363,14 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
 }
 
 function Vector06c(cpu, memory, io, ay) {
-    this.SCREEN_WIDTH = 512 + 64;//600; //512 + 32;//600;
-    //this.SCREEN_HEIGHT = 312;
-	this.SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
-	this.FIRST_VISIBLE_LINE = 312 - this.SCREEN_HEIGHT;
-    this.PIXELS_WIDTH = 512;
-    this.PIXELS_HEIGHT = 256;
-    this.BORDER_LEFT = this.BORDER_RIGHT = (this.SCREEN_WIDTH - this.PIXELS_WIDTH) / 2;
-    this.BORDER_TOP = this.BORDER_BOTTOM = (this.SCREEN_HEIGHT - this.PIXELS_HEIGHT) / 2;
-	this.CENTER_OFFSET = 120;
+    const SCREEN_WIDTH = 512 + 64;//600; //512 + 32;//600;
+	const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
+	const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
+    const PIXELS_WIDTH = 512;
+    const PIXELS_HEIGHT = 256;
+    //this.BORDER_LEFT = this.BORDER_RIGHT = (SCREEN_WIDTH - PIXELS_WIDTH) / 2;
+    //this.BORDER_TOP = this.BORDER_BOTTOM = (SCREEN_HEIGHT - PIXELS_HEIGHT) / 2;
+	const CENTER_OFFSET = 120;
 
     var pause_request = false;
     var onpause = undefined;
@@ -383,14 +391,14 @@ function Vector06c(cpu, memory, io, ay) {
     var w, h, buf8, data2;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
-        if (this.bufferCanvas === undefined || this.SCREEN_WIDTH != w || this.SCREEN_HEIGHT != h) {
+        if (this.bufferCanvas === undefined || SCREEN_WIDTH != w || SCREEN_HEIGHT != h) {
             this.bufferCanvas = document.createElement("canvas");
-            w = this.bufferCanvas.width = this.SCREEN_WIDTH;
-            h = this.bufferCanvas.height = this.SCREEN_HEIGHT;
+            w = this.bufferCanvas.width = SCREEN_WIDTH;
+            h = this.bufferCanvas.height = SCREEN_HEIGHT;
             this.bufferContext = this.bufferCanvas.getContext("2d");
             console.log("bufferContext=", this.bufferContext.canvas);
 
-            this.cvsDat = this.bufferContext.getImageData(0, 0, this.SCREEN_WIDTH, this.SCREEN_HEIGHT);
+            this.cvsDat = this.bufferContext.getImageData(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             //screenCanvas.width = bufferCanvas.width * 1.67;
             this.screenCanvas.width = this.bufferCanvas.width * 1; //1.67;
             this.screenCanvas.height = this.bufferCanvas.height * 1; //(2/1.67);
@@ -407,8 +415,8 @@ function Vector06c(cpu, memory, io, ay) {
                 for (var loop = 0; loop < buf8.length; loop++) buf8[loop] = 0xFF;
 
                 this.bmp = typeof(Int32Array) != "undefined" ? 
-                    new Int32Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT) : 
-                    new Array(this.SCREEN_WIDTH * this.SCREEN_HEIGHT);
+                    new Int32Array(SCREEN_WIDTH * SCREEN_HEIGHT) : 
+                    new Array(SCREEN_WIDTH * SCREEN_HEIGHT);
             }
         }
 
@@ -463,10 +471,6 @@ function Vector06c(cpu, memory, io, ay) {
     //
     this.irq = false;
 
-    // var raster_pixel = 0;
-    // var raster_line = 0;
-    // var fb_column = 0;
-    // var fb_row = 0;
     this.pixels = new Uint8Array(4);
     this.aywrapper = new AYWrapper(ay);
     this.timerwrapper = new TimerWrapper(this.Timer);
@@ -530,6 +534,10 @@ function Vector06c(cpu, memory, io, ay) {
             var dbg_op = this.CPU.last_opcode;
             {
                 var tstates = this.CPU.tstates;
+                // this.instr_time += tstates.reduce(function(x, y) { return x + (y > 4 ? 8 : 4); });
+                // if (dbg_op == 0xd3) {
+                //     commit_time = this.instr_time - 5;
+                // }
                 for (var i = 0, end = tstates.length; i < end; i += 1) {
                     if (tstates[i] > 4) {
                         this.instr_time += 8;
@@ -567,7 +575,7 @@ function Vector06c(cpu, memory, io, ay) {
             // fill pixels
             //var mode512 = this.IO.Mode512();
             var index_modeless = 0;
-            var i;
+            var i, end;
             for (i = 0, end = this.instr_time * 4; i < end && !brk; i += 1) {
                 // this offset is important for matching i/o writes 
                 // (border and palette) and raster
@@ -623,9 +631,9 @@ function Vector06c(cpu, memory, io, ay) {
                 if (i == commit_time_pal) {
                     this.IO.commit_palette(index);
                 }
-                if (updateScreen && (raster_line >= this.FIRST_VISIBLE_LINE)) {
-                    var bmp_x = raster_pixel - this.CENTER_OFFSET; // picture horizontal offset
-                    if (bmp_x >= 0 && bmp_x < this.SCREEN_WIDTH) {
+                if (updateScreen && (raster_line >= FIRST_VISIBLE_LINE)) {
+                    var bmp_x = raster_pixel - CENTER_OFFSET; // picture horizontal offset
+                    if (bmp_x >= 0 && bmp_x < SCREEN_WIDTH) {
                         this.bmp[bmpofs] = this.Palette[index];
                         bmpofs += 1;
                     }

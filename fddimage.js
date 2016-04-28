@@ -71,7 +71,10 @@ MDHeader.prototype.ToBytes = function(dst) {
 };
 
 MDHeader.prototype.FromName = function(filename) {
-    [this.Name, this.Ext] = filename.toUpperCase().split(".");
+    //[this.Name, this.Ext] = filename.toUpperCase().split(".");
+    var nameext = filename.toUpperCase().split(".");
+    this.Name = nameext[0];
+    this.Ext = nameext[1];
     if (this.Ext == undefined) {
         this.Ext = "";
     }
@@ -186,7 +189,9 @@ Filesystem.prototype.readBytes = function(dirent) {
         }
         for (var i = 0; i < 2; i++) {
             var track, head, sector;
-            [track, head, sector] = this.clusterToTHS(clust + i);
+            //[track, head, sector] = this.clusterToTHS(clust + i);
+            var ths = this.clusterToTHS(clust + i);
+            track = ths[0]; head = ths[1]; sector = ths[2];
             //console.log("R: translated cluster ", dirent.Chain[c], "/", i, " to THS ", track, head, sector);
             var mapped = this.mapSector(track, head, sector);
             for (var p = 0; p < 1024; p++) {
@@ -283,7 +288,9 @@ Filesystem.prototype.saveFile = function(name, bytes) {
 	        var clust = chain[eslabon] << 1;
 	        for (var i = 0; i < 2; i++) {
 	            var track, head, sector;
-	            [track, head, sector] = this.clusterToTHS(clust + i);
+	            //[track, head, sector] = this.clusterToTHS(clust + i);
+	            var ths = this.clusterToTHS(clust + i);
+	            track = ths[0]; head = ths[1]; sector = ths[2];
 	            //console.log("W: translated cluster ", chain[eslabon], "/", i, " to THS ", track, head, sector);
 	            var mapped = this.mapSector(track, head, sector);
 	            for (var p = 0; p < 1024; p++) {

@@ -535,8 +535,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 
     fullscreener = new FullScreener();
-
-
     
     zip.workerScriptsPath = './zip.js/WebContent/';
     memory = new Memory();
@@ -621,6 +619,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         }
         v06c.BlkSbr(attach_rom);
     };
+
+    io.onruslat = function(on) {
+        if (window.parent.ruslat) {
+            window.parent.ruslat(on);
+        }
+    }
 
     var fileselect = document.getElementById("fileselect");
 

@@ -27,6 +27,101 @@ function Counter() {
 		latch_value = this.value;
     }
 
+    this.Count = function(cycles) {
+        if (this.borrow !== 0) {
+            cycles -= this.borrow;
+            if (cycles < 0) {
+                this.borrow = -cycles;
+            } else {
+                this.borrow = 0;
+            }
+        }
+        if (cycles <= 0) {
+            return this.out;
+        }
+        switch (this.mode_int) {
+            case 0: // Interrupt on terminal count
+                if (this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+                    this.load = false;
+                }
+                if (this.enabled) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += 65535;
+                        if (this.armed) {
+                            this.out = 1;
+                            this.armed = false;
+                        }
+                    }
+                }
+                break;
+            case 1: // Programmable one-shot
+                if (!this.enabled && this.load) {
+                    //this.value = this.loadvalue; — quirk!
+                    this.enabled = true;
+                    cycles -= 3;
+                }
+                this.load = false;
+                if (this.enabled && cycles > 0) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += this.loadvalue;
+                    }
+                }
+
+                break;
+            case 2: // Rate generator
+                if (!this.enabled && this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+                }
+                this.load = false;
+                if (this.enabled && cycles > 0) {
+                    this.value -= cycles;
+                    if (this.value <= 0) {
+                        this.value += this.loadvalue;
+                    }
+                }
+                // out will go low for one clock pulse but in our machine it should not be 
+                // audible
+                break;
+            case 3: // Square wave generator
+                if (!this.enabled && this.load) {
+                    this.value = this.loadvalue;
+                    this.enabled = true;
+
+                    // odd adjust immediately to make the main loop tighter
+                    if ((this.value & 1) == 1) {
+                        this.value -= this.out == 0 ? 3 : 1;
+                        --cycles;
+                    }
+                }
+                this.load = false;
+                if (this.enabled) {
+                    this.value -= cycles << 1;
+                    if (this.value <= 0) {
+                        this.value += this.loadvalue;
+                        this.out ^= 1;
+                        // odd adjust immediately to make the main loop tighter
+                        if ((this.value & 1) == 1) {
+                            this.value -= this.out == 0 ? 3 : 1;
+                            this.borrow = 1;
+                        }
+
+                    }
+                }
+                break;
+            case 4: // Software triggered strobe
+                break;
+            case 5: // Hardware triggered strobe
+                break;
+        }
+
+        return this.out;
+    }
+
     this.SetMode = function(new_mode, new_latch_mode) {
         this.Count(WRITE_DELAY);
         this.borrow = WRITE_DELAY;
@@ -63,94 +158,6 @@ function Counter() {
         this.load = false;
         latch_mode = new_latch_mode;
         write_state = 0;
-    }
-
-    this.Count = function(cycles) {
-        if (this.borrow !== 0) {
-            cycles -= this.borrow;
-            if (cycles < 0) {
-                this.borrow = -cycles;
-            } else {
-                this.borrow = 0;
-            }
-        }
-        if (cycles <= 0) {
-            return this.out;
-        }
-        switch (this.mode_int) {
-            case 0: // Interrupt on terminal count
-                if (this.load) {
-                    this.value = this.loadvalue;
-                    this.enabled = true;
-                    this.load = false;
-                }
-                if (this.enabled) {
-                    this.value -= cycles;
-                    if (this.value <= 0) {
-                        this.value += 65535;
-                        if (this.armed) {
-                            this.out = 1;
-                            this.armed = false;
-                        }
-                    }
-                }
-                break;
-            case 1: // Programmable one-shot
-                if (!this.enabled && this.load) {
-                    //this.value = this.loadvalue;
-                    this.enabled = true;
-                    cycles -= 3;
-                }
-                this.load = false;
-                if (this.enabled && cycles > 0) {
-                    this.value -= cycles;
-                    if (this.value <= 0) {
-                        this.value += this.loadvalue;
-                    }
-                }
-
-                break;
-            case 2: // Rate generator
-                if (!this.enabled && this.load) {
-                    this.value = this.loadvalue;
-                    this.enabled = true;
-                }
-                this.load = false;
-                if (this.enabled) {
-                    this.value -= cycles;
-                    if (this.value <= 0) {
-                        this.value += this.loadvalue;
-                    }
-                }
-                // out will go low for one clock pulse but in our machine it should not be 
-                // audible
-                break;
-            case 3: // Square wave generator
-                if (!this.enabled && this.load) {
-                    this.value = this.loadvalue;
-                    this.enabled = true;
-                }
-                this.load = false;
-                if (this.enabled && cycles > 0) {
-                	if ((this.value & 1) == 1) {
-                		this.value -= this.out == 0 ? 3 : 1;
-                		--cycles;
-                	}
-
-                	this.value -= cycles * 2;
-                	if (this.value <= 0) {
-                		this.value += this.loadvalue;
-                		this.out = this.out == 0 ? 1 : 0;
-                	}
-                }
-                break;
-            case 4: // Software triggered strobe
-                break;
-            case 5: // Hardware triggered strobe
-                break;
-        }
-
-        return this.out;
     }
 
     this.SetMode(0);
@@ -250,7 +257,6 @@ function I8253() {
         return this.counters[0].Count(cycles) +
          	 this.counters[1].Count(cycles) +
          	 this.counters[2].Count(cycles);
-
     }
 
     this.Write = function(addr, w8) {
