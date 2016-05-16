@@ -95,10 +95,11 @@ function Keyboard() {
 					//sym = semicolon;
 				}
 				//console.log("sym=", sym, " keymap: ", keymap[sym]);
-				//[col, bit] = keymap[sym];
 				var colbit = keymap[sym];
-				col = colbit[0];
-				bit = colbit[1];
+				if (colbit) {
+					col = colbit[0];
+					bit = colbit[1];
+				}
 				if (col != undefined) {
 					apply(this.matrix, col, bit);
 				}

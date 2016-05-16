@@ -21,11 +21,50 @@
         max-height: 100vh;
         max-width: 133.33vh;
         border: 10px solid #111;
+        position: relative;
     }
     
     #canvasdiv.fullpage {
         border: 0px;
         margin: auto;
+    }
+
+    #canvasdiv.dragover {
+    }
+
+    #canvasdiv #dropzone {
+        display:none;
+        font-size: 75vh;
+        text-shadow: 0px 0px 14px rgba(255, 255, 255, 1);
+        background-color: transparent;
+        color: white;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border: 2px dashed #888;
+        margin: 2%;
+        border-radius: 10px;        
+        left: 0;
+        right: 0;
+        text-align: center;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    #canvasdiv #dropzone:before {
+        content: "";
+        opacity: 0.4;
+        background: black;
+        border-radius: 10px;        
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        left: 0;
+        z-index: -1;
+    }
+
+    #canvasdiv.dragover #dropzone {
+        display:block;
     }
     
     #chooser-glass {
@@ -353,6 +392,8 @@
     <script language="JavaScript" src="./i8080-js/i8080.js" type="text/javascript">
     <!-- x -->
     </script>
+    <script language="JavaScript" src="./memory.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./io.js" type="text/javascript"></script>
     <script language="JavaScript" src="./tv.js" type="text/javascript">
     <!-- x -->
     </script>
@@ -375,14 +416,15 @@
     <!-- x -->
     </script>
     <div class="outer" id="outerdiv" style="display:table">
-        <div class="topzone" onclick="about(true); return false;">About vector-06js</div>
+        <div class="topzone" onclick="about(true); return false;">About vector-06js <span id="frameskip"></span></div>
         <div class="inner" id="canvasdiv">
-            <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;" onclick="window.parent.fullscreen(); return false;" />
+            <canvas id="canvas" width="600" height="384" style="width: 100%; height: 100%;" onclick="window.parent.fullscreen(); return false;"></canvas>
+            <div id="dropzone">⬆</div>
         </div>
         <div class="bottomzone">
             <div class="fileUpload">
                 <span>Есть свежий ROM?</span>
-                <input class="upload" type="file" id="fileselect" name="fileselect[]" multiple="multiple" />
+                <input class="upload" type="file" id="fileselect" name="fileselect[]"/>
             </div>
         </div>
     </div>
@@ -548,6 +590,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     io = new IO(keyboard, timer, memory, ay, floppy);
     cpu = new I8080(memory, io);
     v06c = new Vector06c(cpu, memory, io, ay);
+    v06c.frameSkip = 0;
+
+    var frameskip = document.getElementById("frameskip");
+    v06c.onframeskip = function(skip, miss) {
+        frameskip.innerText = v06c.frameSkip + " " + miss;
+    };
+
+
     var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
 
     var chooserParent = "chooser-glass";
@@ -627,13 +677,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 
     var fileselect = document.getElementById("fileselect");
+    var sideloaded = null;
 
     var loadUserRom = function() {
+        console.log("loadUserRom url=", url);
+
         new Loader(url,
             function(rom, start) {
                 v06c.pause(function() {
                     memory.init_from_array(rom, start);
-                    v06c.BlkSbr();
+                    v06c.BlkSbr(false);
                 });
             },
             function() {
@@ -646,9 +699,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                 //v06c.BlkSbr(true);
             },
             chooserParent, "chooserpanel"
-        ).attachDrop(fileselect);
+        ).attachDrop(["fileselect", "canvas"]);
     };
 
+    var sideloadOrLoad = function() {
+        if (sideloaded) {
+            url = sideloaded;
+            loadUserRom();
+        } 
+        else {
+            loadUserRom();
+        }
+    };
 
     new Loader("boot/boots.bin",
         function(bootrom, start) {
@@ -657,7 +719,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                 memory.init_from_array([], 0);
                 memory.attach_boot(bootrom);
                 v06c.BlkSbr(true);
-                loadUserRom();
+                //loadUserRom();
+                sideloadOrLoad();
             });
         },
         function() {
@@ -670,22 +733,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         aboot = document.getElementById(aboutParent);
         if (visible) {
             aboot.className += " visible";
-            //aboot.style.display = "table";    
             aboot.style.opacity = 1.0;
         } else {
-            //aboot.className = "";
             aboot.className = aboot.className.substring(0, aboot.className.length - " visible".length);
             aboot.style.opacity = 0.0;
-            //aboot.style.display = "none";
         }
     };
     blksbr = function(reboot) {
         keyboard.onreset(reboot);
     };
+    sideload = function(mem) {
+        sideloaded = mem;
+        // v06c.pause(function() {
+        //     memory.init_from_array(mem, 0);
+        //     v06c.BlkSbr(false);
+        // });
+    };
     if (window.parent.registerHooks) {
         window.parent.registerHooks({'about': about, 
-                                     'blksbr': blksbr});
+                                     'blksbr': blksbr,
+                                     'sideload': sideload});
     }
+
     </script>
 
 </html>

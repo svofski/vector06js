@@ -4,22 +4,76 @@
 // Load ROM from url: url can be direct rom/r0m, or an url of a zip
 // file containing a rom/r0m. First suitable entry will be used.
 //
+
+"use strict";
+
 function Loader(url, callback, callback_error, callback_fdd, parent_id, container_id) {
-    var fetchROM2 = function(url, callback, callback_error) {
-        var oReq = new XMLHttpRequest();
-        oReq.open("GET", url, true);
-        oReq.responseType = "blob";
+    var str2ab = function(str) {
+      var buf = new ArrayBuffer(str.length); 
+      var bufView = new Uint8Array(buf);
+      var dbg = "";
+      for (var i=0, strLen=str.length; i<strLen; i++) {
+        bufView[i] = str.charCodeAt(i);
 
-        oReq.onload = function(oEvent) {
-            var blob = oReq.response;
-            tryUnzip(url, blob, callback);
-        };
-        oReq.onerror = function(oEvent) {
-            console.log("XMLHttpRequest error", oEvent);
-            callback_error();
+        dbg += bufView[i].toString(16) + " ";
+        if ((i % 16 == 15) || (i == strLen - 1)) {
+            console.log(dbg);
+            dbg = "";
         }
+      }
+      return buf;
+    }    
 
-        oReq.send();
+    var fetchROM2 = function(url, callback, callback_error) {
+        var name = url['name'];
+        if (name) {
+            var mem = url['mem'];
+            var ab, view;
+            var makedisk = false;
+            if (name.endsWith("r0m")) {
+                ab = new ArrayBuffer(mem.length);
+                view = new Uint8Array(ab);
+                for (var i = 0; i < view.length; i+=1) {
+                    view[i] = mem[i];
+                }
+            } else if (name.endsWith("rom") || name.endsWith("com")) {
+                ab = new ArrayBuffer(mem.length - 256);
+                view = new Uint8Array(ab);
+                for (var src = 256, dst = 0; dst < view.length; ++src, ++dst) {
+                    view[dst] = mem[src];
+                }
+                makedisk = name.endsWith("com");
+            } 
+            var blob = new Blob([ab], {type: "application/octet-stream"});
+            if (makedisk) {
+                buildFddAndLaunch([{'filename':name, 'blob': blob}]);
+            } else {
+                tryUnzip(url['name'], blob, callback);
+            }
+        // }
+        // if (url.startsWith("data:")) {
+            
+        //     var data = url.split('base64,')[1];
+        //     console.log("base64 string: ", data);
+        //     var ab = str2ab(window.atob(data));
+        //     var blob = new Blob([ab], {type: "application/octet-stream"});
+        //     tryUnzip("data.r0m", blob, callback);
+        } else {
+            var oReq = new XMLHttpRequest();
+            oReq.open("GET", url, true);
+            oReq.responseType = "blob";
+
+            oReq.onload = function(oEvent) {
+                var blob = oReq.response;
+                tryUnzip(url, blob, callback);
+            };
+            oReq.onerror = function(oEvent) {
+                console.log("XMLHttpRequest error", oEvent);
+                callback_error();
+            }
+
+            oReq.send();
+        }
     }
 
     var readData = function(blob, callback, start) {
@@ -36,11 +90,15 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
     }
 
     var extract = function(entry, callback, start) {
-        console.log("Unzipping ", entry.filename);
-        writer = new zip.BlobWriter("application/octet-stream");
-        entry.getData(writer, function(data) {
-            readData(data, callback, start);
-        });
+        if (entry['blob']) {
+            readData(entry['blob'], callback, start);
+        } else {
+            console.log("Unzipping ", entry.filename);
+            let writer = new zip.BlobWriter("application/octet-stream");
+            entry.getData(writer, function(data) {
+                readData(data, callback, start);
+            });
+        }
     }
 
     var extractAndLaunch = function(entry) {
@@ -84,7 +142,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                         var name = items[i].filename;
                         var finalize = function(initial) {
                             if (initial) {
-                                initial = initial.toUpperCase() + "\n\n\n";
+                                initial = initial.toUpperCase() + "\n" + String.fromCharCode(26);
                                 var ibytes = new Uint8Array(initial.length);
                                 for (var i = 0; i < initial.length; i++) {
                                     ibytes[i] = initial.charCodeAt(i);
@@ -223,18 +281,63 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         return undefined;
     }
 
-    var initDrop = function(fileselect) {
-        if (fileselect) {
-            var fileSelectHandler = function(e) {
-                console.log("fileSelectHandler e=", fileselect.files[0]);
-                if (Loader.prototype.ChooserElement) {
-                    Loader.prototype.ChooserElement.style.display = "none";
-                    Loader.prototype.ChooserElement = undefined;
-                }
-                tryUnzip(fileselect.files[0].name, fileselect.files[0], callback);
+    var initDrop = function(inputs) {
+        for (let inputId in inputs) {
+            let target = document.getElementById(inputs[inputId]);
+            if (!target) {
+                console.log("initDrop: cannot find element ", inputs[inputId]);
+                continue;
             }
+            if (target.tagName === "INPUT") {
+                var fileSelectHandler = function(e) {
+                    var fileselect = document.getElementById(inputId);
+                    console.log("fileSelectHandler e=", fileselect.files[0]);
+                    if (Loader.prototype.ChooserElement) {
+                        Loader.prototype.ChooserElement.style.display = "none";
+                        Loader.prototype.ChooserElement = undefined;
+                    }
+                    tryUnzip(fileselect.files[0].name, fileselect.files[0], callback);
 
-            fileselect.addEventListener("change", fileSelectHandler, false);
+                    // recreate the input thingy
+                    //<input class="upload" type="file" id="fileselect" name="fileselect[]"/>                
+                    let input = document.createElement("input");
+                    input.className = "upload";
+                    input.type = "file";                
+                    input.name = "fileselect[]";
+                    input.addEventListener("change", fileSelectHandler);
+                    fileselect.parentNode.replaceChild(input, fileselect);
+                    input.id = "fileselect";
+                }
+
+                fileselect.addEventListener("change", fileSelectHandler, false);
+            } 
+            else if (target.tagName === "CANVAS") {
+                // try dragover with canvas
+                target.ondragover = function(e) {
+                    e.preventDefault();
+                }
+                target.ondragenter = function(e) {
+                    e.preventDefault();
+                    var parent = target.parentNode;
+                    parent.className += " dragover";
+                }
+                target.ondragleave = function(e) {
+                    e.preventDefault();
+                    var parent = target.parentNode;
+                    parent.className = parent.className.replace(/ dragover/g, "");
+                    //parent.className = parent.className.substring(parent.className.length - " dragover".length);
+                }
+                target.ondragend = function(e) {
+                    e.preventDefault();
+                }
+                target.ondrop = function(e) {
+                    e.preventDefault();
+                    var parent = target.parentNode;
+                    parent.className = parent.className.replace(/ dragover/g, "");
+                    tryUnzip(e.dataTransfer.files[0].name, e.dataTransfer.files[0], callback);                    
+                }
+
+            }
         }
     }
 

@@ -6,387 +6,25 @@
 var debug = false;
 var debug_str = "";
 
-function Memory() {
-    this.bytes = new Uint8Array(65536 + 256 * 1024);
-    this.bootbytes = undefined;
-
-    for (var i = 0x0000; i < this.bytes.length; i++) {
-        this.bytes[i] = 0; 
-    }
-
-    this.mode_stack = false;
-    this.mode_map = false;
-    this.page_map = 0;
-    this.page_stack = 0;
-
-    var dbg_ctr = 0;
-    this.control_write = function(w8) {
-        //console.log("kvaz control_write: ", w8.toString(16));
-        this.mode_stack = (w8 & 0x10) != 0;
-        this.mode_map = (w8 & 0x20) != 0;
-        this.page_map = ((w8) & 3) + 1;
-        this.page_stack = (((w8) & 0xc) >> 2) + 1;
-        // if (mode_map) {
-        //     console.log("kvz page select ", page_map);
-        // } else {
-        //     console.log("kvz nax");
-        // }
-    }
-
-    // 8000 -> 8000
-    // a000 -> 8001   1010 0000 0000 0000 -> 1000 0000 0000 0001
-    // c000 -> 8002
-    // e000 -> 8003
-    // 8001 -> 8004
-    this.bigram_select = function(addr, stackrq) {
-        if (!(this.mode_map || this.mode_stack)) {
-            return addr;
-        } else if (this.mode_stack && stackrq != undefined && stackrq) {
-            return addr + (this.page_stack << 16);
-        } else if (this.mode_map && addr >= 0xa000 && addr < 0xe000) {
-            return addr + (this.page_map << 16);
-        }
-        return addr;
-    }
-
-    this.read = function(addr, stackrq) {
-        if (this.bootbytes && addr < this.bootbytes.length) {
-            return this.bootbytes[addr];
-        }
-        return this.bytes[this.bigram_select(addr & 0xffff, stackrq)];
-    }
-
-    this.write = function(addr, w8, stackrq) {
-        this.bytes[this.bigram_select(addr & 0xffff, stackrq)] = w8;
-    }
-
-    this.load_file = function(files, name) {
-        if (files[name] == null) {
-            console.log("File " + name + " is not found");
-            return;
-        }
-        var end = files[name].start + files[name].image.length - 1;
-        for (var i = files[name].start; i <= end; ++i)
-            this.write(i, files[name].image.charCodeAt(i - files[name].start));
-
-        console.log("*********************************");
-        var size = files[name].end - files[name].start + 1;
-        console.log("File \"" + name + "\" loaded, size " + size);
-    }
-
-    this.init_from_array = function(array, start_addr) {
-        for (var i = this.bytes.length; --i >= 0;) {
-            this.bytes[i] = 0;
-        }
-        for (var i = 0, end = array.length; i < end; i++) {
-            this.write(start_addr + i, array[i], false);
-        }
-    }
-
-    this.attach_boot = function(array) {
-        this.bootbytes = new Uint8Array(array.length);
-        for (var i = array.length; --i >= 0;) {
-            this.bootbytes[i] = array[i];
-        }
-    }
-
-    this.detach_boot = function() {
-        this.bootbytes = undefined;
-    }
-
-    this.dump = function() {
-        var s = "";
-        var addr = 0;
-        for (var i = 0; i < 8192;) {
-            s += this.bytes[i].toString(16) + " ";
-            ++i;
-            if (i % 16 == 0) {
-                console.log(addr.toString(16) + "  " + s);
-                s = "";
-                addr += 16;
-            }
-        }
-    }
-}
-
-function IO(keyboard, timer, kvaz, ay, fdc) {
-    this.iff = false;
-    this.Palette = new Uint32Array(16);
-    this.Timer = timer;
-    this.onmodechange = function(mode) {};
-    this.onborderchange = function(border) {};
-    this.ontapeoutchange = function(tape) {};
-    this.onruslat = function(on) {};
-
-    var CW = 0x98,
-        PA = 0xff,
-        PB = 0xff,
-        PC = 0xff;
-    var CW2 = 0,
-        PA2 = 0xff,
-        PB2 = 0xff,
-        PC2 = 0xff;
-    var outport, outbyte, palettebyte;
-
-    this.input = function(port) {
-        var result = 0xff;
-        switch (port) {
-            case 0x00:
-                //result = 0x80 | CW;
-                // No read operation of the control word register is allowed
-                result = 0xff;
-                break;
-            case 0x01:
-                result = (PC & 0x0f)  | 0x10 | 
-                    (keyboard.ss ? 0 : (1 << 5)) |
-                    (keyboard.us ? 0 : (1 << 6)) |
-                    (keyboard.rus ? 0 : (1 << 7));
-                break;
-            case 0x02:
-                if ((CW & 0x02) != 0) {
-                    result = keyboard.Read(~PA);
-                } else {
-                    result = 0xff;
-                }
-                break;
-            case 0x03:
-                if ((CW & 0x10) == 0) {
-                    result = 0x00;
-                } else {
-                    result = 0xff;
-                }
-                break;
-
-            case 0x04:
-                result = CW2;
-                break;
-            case 0x05:
-                result = PC2;
-                break;
-            case 0x06:
-                result = PB2;
-                break;
-            case 0x07:
-                result = PA2;
-                break;
-
-                // Timer
-            case 0x08:
-            case 0x09:
-            case 0x0a:
-            case 0x0b:
-                return this.Timer.Read(~(port & 3));
-                break;
-
-            case 0x14:
-            case 0x15:
-                result = ay.read(port & 1);
-                break;
-
-            case 0x18:  // fdc data
-                result = fdc.read(3);
-                break;
-            case 0x19:  // fdc sector
-                result = fdc.read(2);
-                break;
-            case 0x1a:  // fdc track
-                result = fdc.read(1);
-                break;
-            case 0x1b:  // fdc status
-                result = fdc.read(0);
-                break;
-            case 0x1c:  // fdc control - readonly
-                //result = fdc.read(4);
-                break;
-        }
-        return result;
-    }
-
-    this.output = function(port, w8) {
-        switch(port) {
-        case 0x08:
-        case 0x09:
-        case 0x0a:
-        case 0x0b:
-            this.Timer.Write((~port & 3), w8);
-            break;
-        default:
-            outport = port;
-            outbyte = w8;
-            break;
-        }
-    }
-
-    this.realoutput = function(port, w8) {
-        switch (port) {
-            // PIA 
-            case 0x00:
-                CW = w8;
-                var ruslat = PC & 8;
-                if ((CW & 0x80) == 0) {
-
-                    // port C BSR: 
-                    //   bit 0: 1 = set, 0 = reset
-                    //   bit 1-3: bit number
-                    var bit = (CW >> 1) & 7;
-                    if ((CW & 1) == 1) {
-                        PC |= 1 << bit;
-                    } else {
-                        PC &= ~(1<<bit);
-                    }
-                    this.ontapeoutchange(PC & 1);
-                } else {
-                    PA = PB = PC = 0;               
-                }
-                if (((PC & 8) != ruslat) && this.onruslat) {
-                    this.onruslat((PC & 8) == 0);
-                }
-                // if (debug) {
-                //     console.log("output commit cw = ", CW.toString(16));
-                // }
-                break;
-            case 0x01:
-                var ruslat = PC & 8;
-                PC = w8;
-                this.ontapeoutchange(PC & 1);
-                if (((PC & 8) != ruslat) && this.onruslat) {
-                    this.onruslat((PC & 8) == 0);
-                }
-                break;
-            case 0x02:
-                PB = w8;
-                this.onborderchange(PB & 0x0f);
-                this.onmodechange((PB & 0x10) != 0);
-                break;
-            case 0x03:
-                PA = w8;
-                break;
-                // PPI2
-            case 0x04:
-                CW2 = w8;
-                break;
-            case 0x05:
-                PC2 = w8;
-                break;
-            case 0x06:
-                PB2 = w8;
-                break;
-            case 0x07:
-                PA2 = w8;
-                break;
-                // Timer
-            // case 0x08:
-            // case 0x09:
-            // case 0x0a:
-            // case 0x0b:
-            //     this.Timer.Write((~port & 3), w8);
-            //     break;
-
-            case 0x0c:
-            case 0x0d:
-            case 0x0e:
-            case 0x0f:
-                this.palettebyte = w8;
-                break;
-            case 0x10:
-                // kvas 
-                kvaz.control_write(w8);
-                break;
-            case 0x14:
-            case 0x15:
-                ay.write(port & 1, w8);
-                break;
-
-            case 0x18:  // fdc data
-                fdc.write(3, w8);
-                break;
-            case 0x19:  // fdc sector
-                fdc.write(2, w8);
-                break;
-            case 0x1a:  // fdc track
-                fdc.write(1, w8);
-                break;
-            case 0x1b:  // fdc command
-                fdc.write(0, w8);
-                break;
-            case 0x1c:  // fdc control
-                fdc.write(4, w8);
-                break;
-        }
-    }
-
-    this.commit = function() {
-        if (outport != undefined) {
-            this.realoutput(outport, outbyte);
-            outport = outbyte = undefined;
-        }
-    }
-
-    this.commit_palette = function(index) {
-        var w8 = this.palettebyte;
-        if (w8 == undefined && outport == 0x0c) {
-            w8 = outbyte;
-            outport = outbyte = undefined;
-        }
-        if (w8 != undefined) {
-            var b = (w8 & 0xc0) >> 6;
-            var g = (w8 & 0x38) >> 3;
-            var r = (w8 & 0x07);
-            this.Palette[index] =
-                0xff000000 |
-                (b << (6 + 16)) |
-                (g << (5 + 8)) |
-                (r << (5 + 0));
-            this.palettebyte = undefined;
-        }
-    }
-
-    this.interrupt = function(iff) {
-        this.iff = iff;
-    }
-
-    this.BorderIndex = function() {
-        return PB & 0x0f;
-    }
-
-    this.ScrollStart = function() {
-        return PA;
-    }
-
-    this.Mode512 = function() {
-        return (PB & 0x10) != 0;
-    }
-
-	this.TapeOut = function() {
-		return PC & 1;
-	}
-}
-
 function Vector06c(cpu, memory, io, ay) {
-    const SCREEN_WIDTH = 512 + 64;//600; //512 + 32;//600;
+    const SCREEN_WIDTH = 512 + 64;
 	const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
 	const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
     const PIXELS_WIDTH = 512;
     const PIXELS_HEIGHT = 256;
-    //this.BORDER_LEFT = this.BORDER_RIGHT = (SCREEN_WIDTH - PIXELS_WIDTH) / 2;
-    //this.BORDER_TOP = this.BORDER_BOTTOM = (SCREEN_HEIGHT - PIXELS_HEIGHT) / 2;
 	const CENTER_OFFSET = 120;
 
     var pause_request = false;
     var onpause = undefined;
     var paused = true;
 
-    this.bmp = undefined;
+    this.frameSkip = 0;
 
     this.Memory = memory;
     this.CPU = cpu;
     this.IO = io;
-    this.Timer = this.IO.Timer;
 
-    this.soundnik = new Soundnik(this);
-    this.renderingBuffer = this.soundnik.renderingBuffer;
-    this.soundRatio = this.soundnik.sampleRate / 1497600.0;
-    this.soundAccu = 0.0;
+    this.soundnik = new Soundnik(ay, this.IO.Timer);
 
     var w, h, buf8, data2;
     var usingPackedBuffer = false;
@@ -436,20 +74,6 @@ function Vector06c(cpu, memory, io, ay) {
             this.screenCanvas.width, this.screenCanvas.height);
     }
 
-    // 1/2/3/4 1/2/3/4
-    // 0 = 0000
-    // 1 = 2000
-    // 2 = 4000
-    // 3 = 6000
-    // addr = {addr[1:0],addr[14:0]}
-    this.fetchPixels = function(column, row, mem) {
-        var addr = ((column & 0xff) << 8) | (row & 0xff);
-        this.pixels[3] = mem[0xe000 + addr];
-        this.pixels[2] = mem[0xc000 + addr];
-        this.pixels[1] = mem[0xa000 + addr];
-        this.pixels[0] = mem[0x8000 + addr];
-    }
-
     // one cycle 
     // CPU clock = 3 MHz
     // pixelclock = 12 Mhz (512 pixels/line)
@@ -472,12 +96,9 @@ function Vector06c(cpu, memory, io, ay) {
     this.irq = false;
 
     this.pixels = new Uint8Array(4);
-    this.aywrapper = new AYWrapper(ay);
-    this.timerwrapper = new TimerWrapper(this.Timer);
 
-    //var border_index_cached = this.IO.BorderIndex();
     this.border_index_cached = 0;
-    self = this;
+    var self = this;
     this.IO.onborderchange = function(border) {
         self.border_index_cached = border;
     };
@@ -492,7 +113,6 @@ function Vector06c(cpu, memory, io, ay) {
 
     this.Palette = this.IO.Palette;
     this.between = 0;
-
     this.instr_time = 0;
 
     this.oneInterrupt = function(mem, updateScreen) {
@@ -506,11 +126,12 @@ function Vector06c(cpu, memory, io, ay) {
         var bmpofs = 0;
         var commit_time = -1;
         var commit_time_pal = -1;
-        //var this.instr_time = 0;
+
+        var vborder = true;
+        var visible = false;
 
         this.between = 0;
         for (; !brk;) {
-            //this.instr_time = 0;
             commit_time = commit_time_pal = -1;
 
             if (this.irq && this.CPU.iff) {
@@ -528,114 +149,69 @@ function Vector06c(cpu, memory, io, ay) {
                 //debug_str = "";
             }
 
-            var dbg_pc = this.CPU.pc;    
-            // execute next instruction and calculate time by rounding up tstates
             this.CPU.instruction(); 
             var dbg_op = this.CPU.last_opcode;
-            {
-                var tstates = this.CPU.tstates;
-                // this.instr_time += tstates.reduce(function(x, y) { return x + (y > 4 ? 8 : 4); });
-                // if (dbg_op == 0xd3) {
-                //     commit_time = this.instr_time - 5;
-                // }
-                for (var i = 0, end = tstates.length; i < end; i += 1) {
-                    if (tstates[i] > 4) {
-                        this.instr_time += 8;
-                    } else {
-                        this.instr_time += 4;
-                    }
-                    // if out was executed, commit it at this moment
-                    if (dbg_op == 0xd3 && i == 1) {
-                        commit_time = this.instr_time - 1;
-                    }
-                }
+            this.instr_time += this.CPU.vcycles;
+            if (dbg_op == 0xd3) {
+                commit_time = this.instr_time - 5;
             }
             if (commit_time != -1) {
                 commit_time = commit_time * 4 + 4;
                 commit_time_pal = commit_time - 20;
             }
 
-            // tick the timer (half of cpu cycles)
-            //this.timerwrapper.step(this.instr_time / 2);
-
-            this.aywrapper.step(this.instr_time);
-
-            this.soundAccu += this.soundRatio * this.instr_time / 2;
-            if (this.soundAccu >= 1.0) {
-                this.soundAccu -= 1.0;
-                var sound = 
-                    1.0 * this.timerwrapper.unload() + 
-                    this.aywrapper.unload() + 
-                    this.tapeout +
-                    Math.random() * 0.005;
-
-                this.soundnik.sample(sound - 0.5);
-            }
-
             // fill pixels
             //var mode512 = this.IO.Mode512();
             var index_modeless = 0;
+            var rpixel, hborder, border;
             var i, end;
-            for (i = 0, end = this.instr_time * 4; i < end && !brk; i += 1) {
+            // create locals shorthands to busy arrays
+            const bmp = this.bmp;
+            const palette = this.Palette;
+            const pixels = this.pixels;
+            var mode512 = this.mode512;
+            for (i = 0, end = this.instr_time << 2; i < end && !brk; i += 2) {
                 // this offset is important for matching i/o writes 
                 // (border and palette) and raster
                 // test:bord2
-                var rpixel = raster_pixel - 24;                
-                var vborder = (raster_line < 40) || (raster_line >= (40 + 256));                
-                var hborder = (rpixel < (768 - 512) / 2) ||
-                    (rpixel >= (768 - (768 - 512) / 2));
-                var border = hborder || vborder;
-                if (updateScreen) {
-                    if (border) {
-                        index = this.border_index_cached;
-                        fb_column = 0;
-                    } else {
-                        if (rpixel % 16 == 0) {
-                            this.fetchPixels(fb_column, fb_row, mem);
-                        }
-
-                        // mode 256
-                        if (raster_pixel % 2 == 0) {
-                            index_modeless = ((this.pixels[0] & 0x80) >> 4) |
-                                ((this.pixels[1] & 0x80) >> 5) |
-                                ((this.pixels[2] & 0x80) >> 6) |
-                                ((this.pixels[3] & 0x80) >> 7);
-                            this.pixels[0] <<= 1;
-                            this.pixels[1] <<= 1;
-                            this.pixels[2] <<= 1;
-                            this.pixels[3] <<= 1;
-                        }
-                        if (this.mode512) {
-                            if (raster_pixel % 2 == 0) {
-                                index = index_modeless & 0x03;
-                            } else {
-                                index = index_modeless & 0x0c;
-                            }
-                        } else {
-                            index = index_modeless;
-                        }
-
-                        if (rpixel % 16 == 0) {
-                            fb_column++;
-                        }
+                rpixel = raster_pixel - 24;
+                border = vborder ||
+                    /* hborder */ (rpixel < (768 - 512) / 2) || (rpixel >= (768 - (768 - 512) / 2));
+                if (border) {
+                    index = this.border_index_cached;
+                    fb_column = 0;
+                } 
+                else {
+                    if ((rpixel & 0x0f) === 0) {
+                        this.fetchPixels(fb_column, fb_row, mem);
+                        ++fb_column;
                     }
+
+                    index = this.shiftOutPixels();
                 }
 
                 // commit regular i/o writes (e.g. border index)
                 // test: bord2
-                if (i == commit_time) {
+                if (i === commit_time) {
                     this.IO.commit();
+                    mode512 = this.mode512;
                 }
                 // commit i/o to palette ram
                 // test: bord2
-                if (i == commit_time_pal) {
+                if (i === commit_time_pal) {
                     this.IO.commit_palette(index);
                 }
-                if (updateScreen && (raster_line >= FIRST_VISIBLE_LINE)) {
+                //if (updateScreen && (raster_line >= FIRST_VISIBLE_LINE)) {
+                if (visible) {
                     var bmp_x = raster_pixel - CENTER_OFFSET; // picture horizontal offset
                     if (bmp_x >= 0 && bmp_x < SCREEN_WIDTH) {
-                        this.bmp[bmpofs] = this.Palette[index];
-                        bmpofs += 1;
+                        if (mode512) {
+                            bmp[bmpofs++] = palette[border ? index : (index & 0x03)];
+                            bmp[bmpofs++] = palette[border ? index : (index & 0x0c)];
+                        } else {
+                            bmp[bmpofs++] = palette[index];
+                            bmp[bmpofs++] = palette[index];
+                        }
                     }
                 }
 
@@ -643,35 +219,42 @@ function Vector06c(cpu, memory, io, ay) {
                 // 18 border
                 // 256 picture
                 // 16 border
-                raster_pixel++;
-                if (raster_pixel == 768) {
+                raster_pixel += 2;
+                if (raster_pixel === 768) {
                     raster_pixel = 0;
-                    raster_line++;
+                    raster_line += 1;
                     if (!vborder) {
-                        fb_row--;
+                        --fb_row;
                         if (fb_row < 0) {
                             fb_row = 0xff;
                         }
                     }
-                    if (raster_line == 312) {
+                    // update vertical border only when line changes
+                    vborder = (raster_line < 40) || (raster_line >= (40 + 256));
+                    // turn on pixel copying after blanking area
+                    visible |= updateScreen && raster_line === FIRST_VISIBLE_LINE; 
+                    if (raster_line === 312) {
                         raster_line = 0;
+                        visible = false; // blanking starts
                         brk = true;
                     }
                 }
                 // load scroll register at this precise moment
                 // test:scrltst2
-                if (raster_line == 22 + 18 && raster_pixel == 150) {
+                if (raster_line === 22 + 18 && raster_pixel === 150) {
                     fb_row = this.IO.ScrollStart();
                 }
                 // irq time
                 // test:bord2
-                if (raster_line == 0 && raster_pixel == 176 && this.CPU.iff) {
+                else if (raster_line === 0 && raster_pixel === 176 && this.CPU.iff) {
                     this.irq = true;
                 }
             }
-            var wrap = this.instr_time - i/4;
-            this.timerwrapper.step((this.instr_time - wrap) / 2);
-            this.between += this.instr_time - wrap;
+            var wrap = this.instr_time - (i >> 2);
+            var step = this.instr_time - wrap;
+            this.soundnik.soundStep(step, this.tapeout);
+
+            this.between += step;
             this.instr_time = wrap;
         }
     };
@@ -691,45 +274,50 @@ function Vector06c(cpu, memory, io, ay) {
     var nextFrameTime = new Date().getTime();
     //var bytes = this.Memory.bytes;
 
-    this.twoFrame = function() {
-        var frameRate = 25;
+    const ACCELERATION_DELAY = 25;
+    const THROTTLE_DELAY = 2;
 
-        this.oneInterrupt(this.Memory.bytes, true);
-        this.oneInterrupt(this.Memory.bytes, false);
-        this.displayFrame();
-
-        var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
-        if (timeWaitUntilNextFrame < 0) {
-            timeWaitUntilNextFrame = 0;
-            nextFrameTime = new Date().getTime() + (1000 / frameRate);
-        } else {
-            nextFrameTime += (1000 / frameRate);
-        }
-
-        if (pause_request) {
-            pause_request = false;
-            paused = true;
-            if (onpause) {
-                onpause();
-                onpause = undefined;
-            }
-        } else {
-            setTimeout('v06c.twoFrame()', timeWaitUntilNextFrame);
-        }
-    };
-
-
+    this.accelerationDelay = 0; 
+    this.throttleDelay = THROTTLE_DELAY;
+    const TARGET_FRAMERATE = 50;
     this.oneFrame = function() {
-        var frameRate = 50;
+        var frameRate = TARGET_FRAMERATE / (this.frameSkip + 1);
 
         this.oneInterrupt(this.Memory.bytes, true);
+        for (var i = this.frameSkip; --i >= 0;) {
+            this.oneInterrupt(this.Memory.bytes, false);
+        }
+
         this.displayFrame();
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
+            if (this.frameSkip < 8) {
+                if (--this.throttleDelay < 0) {
+                    this.throttleDelay = THROTTLE_DELAY;
+                    ++this.frameSkip;
+                    frameRate = TARGET_FRAMERATE / (this.frameSkip + 1);
+                    if (this.onframeskip) {
+                        this.onframeskip(this.frameSkip, -timeWaitUntilNextFrame);
+                    }
+                }
+            }
             timeWaitUntilNextFrame = 0;
+            this.accelerationDelay = ACCELERATION_DELAY;
             nextFrameTime = new Date().getTime() + (1000 / frameRate);
         } else {
+            this.throttleDelay = THROTTLE_DELAY;
+            if (this.frameSkip > 0 && timeWaitUntilNextFrame > 1000/TARGET_FRAMERATE) {
+                if (this.accelerationDelay == 0 || --this.accelerationDelay == 0) {
+                    --this.frameSkip;
+                    this.accelerationDelay = ACCELERATION_DELAY;
+                    if (this.onframeskip) {
+                        this.onframeskip(this.frameSkip, -timeWaitUntilNextFrame)
+                    }
+                } 
+            } else {
+                this.accelerationDelay = ACCELERATION_DELAY;
+            }
             nextFrameTime += (1000 / frameRate);
         }
 
@@ -745,6 +333,41 @@ function Vector06c(cpu, memory, io, ay) {
         }
     };
 
+
+    this.updateDisplay = true;
+    this.oneFrameDumbass = function() {
+        //var frameRate = this.frameSkip ? ACCELERATION_DELAY : 50;
+        var frameRate = 50;
+
+        this.oneInterrupt(this.Memory.bytes, this.updateDisplay);
+        if (this.updateDisplay) {
+            this.displayFrame();
+        }
+
+        var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
+        if (timeWaitUntilNextFrame < 0) {
+            timeWaitUntilNextFrame = 0;        
+            nextFrameTime = new Date().getTime() + (1000 / frameRate);
+            this.updateDisplay = false;
+            console.log("feck");
+        } else {
+            nextFrameTime += (1000 / frameRate);
+            this.updateDisplay = true;
+        }
+
+        if (pause_request) {
+            pause_request = false;
+            paused = true;
+            if (onpause) {
+                onpause();
+                onpause = undefined;
+            }
+        } else {
+            setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
+        }
+    };
+
+
     this.initCanvas();
 
     // start the dance
@@ -757,9 +380,9 @@ function Vector06c(cpu, memory, io, ay) {
         if (!keep_rom) {
             this.Memory.detach_boot();
         }
-        this.Timer.Write(3, 0x36);
-        this.Timer.Write(3, 0x76);
-        this.Timer.Write(3, 0xb6);
+        this.IO.Timer.Write(3, 0x36);
+        this.IO.Timer.Write(3, 0x76);
+        this.IO.Timer.Write(3, 0xb6);
         ay.reset();
         this.oneFrame();
     };
@@ -778,4 +401,21 @@ function Vector06c(cpu, memory, io, ay) {
             callback();
         }
     };
+}
+
+Vector06c.prototype.fetchPixels = function(column, row, mem) {
+    var addr = ((column & 0xff) << 8) | (row & 0xff);
+    this.pixels[0] = mem[0x8000 + addr];
+    this.pixels[1] = mem[0xa000 + addr];
+    this.pixels[2] = mem[0xc000 + addr];
+    this.pixels[3] = mem[0xe000 + addr];
+}
+
+Vector06c.prototype.shiftOutPixels = function() {
+    var pixels = this.pixels;
+    var index_modeless = ((pixels[0] & 0x80) >> 4); pixels[0] <<= 1;
+    index_modeless |= ((pixels[1] & 0x80) >> 5); pixels[1] <<= 1;
+    index_modeless |= ((pixels[2] & 0x80) >> 6); pixels[2] <<= 1;
+    index_modeless |= ((pixels[3] & 0x80) >> 7); pixels[3] <<= 1;
+    return index_modeless;
 }
