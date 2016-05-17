@@ -3,7 +3,7 @@ function Memory() {
     this.bootbytes = undefined;
 
     for (var i = 0x0000; i < this.bytes.length; i++) {
-        this.bytes[i] = 0; 
+        this.bytes[i] = 0;
     }
 
     this.mode_stack = false;

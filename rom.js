@@ -9,20 +9,20 @@
 
 function Loader(url, callback, callback_error, callback_fdd, parent_id, container_id) {
     var str2ab = function(str) {
-      var buf = new ArrayBuffer(str.length); 
-      var bufView = new Uint8Array(buf);
-      var dbg = "";
-      for (var i=0, strLen=str.length; i<strLen; i++) {
-        bufView[i] = str.charCodeAt(i);
+        var buf = new ArrayBuffer(str.length);
+        var bufView = new Uint8Array(buf);
+        var dbg = "";
+        for (var i = 0, strLen = str.length; i < strLen; i++) {
+            bufView[i] = str.charCodeAt(i);
 
-        dbg += bufView[i].toString(16) + " ";
-        if ((i % 16 == 15) || (i == strLen - 1)) {
-            console.log(dbg);
-            dbg = "";
+            dbg += bufView[i].toString(16) + " ";
+            if ((i % 16 == 15) || (i == strLen - 1)) {
+                console.log(dbg);
+                dbg = "";
+            }
         }
-      }
-      return buf;
-    }    
+        return buf;
+    }
 
     var fetchROM2 = function(url, callback, callback_error) {
         var name = url['name'];
@@ -33,7 +33,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             if (name.endsWith("r0m")) {
                 ab = new ArrayBuffer(mem.length);
                 view = new Uint8Array(ab);
-                for (var i = 0; i < view.length; i+=1) {
+                for (var i = 0; i < view.length; i += 1) {
                     view[i] = mem[i];
                 }
             } else if (name.endsWith("rom") || name.endsWith("com")) {
@@ -43,21 +43,21 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                     view[dst] = mem[src];
                 }
                 makedisk = name.endsWith("com");
-            } 
-            var blob = new Blob([ab], {type: "application/octet-stream"});
+            }
+            var blob = new Blob([ab], { type: "application/octet-stream" });
             if (makedisk) {
-                buildFddAndLaunch([{'filename':name, 'blob': blob}]);
+                buildFddAndLaunch([{ 'filename': name, 'blob': blob }]);
             } else {
                 tryUnzip(url['name'], blob, callback);
             }
-        // }
-        // if (url.startsWith("data:")) {
-            
-        //     var data = url.split('base64,')[1];
-        //     console.log("base64 string: ", data);
-        //     var ab = str2ab(window.atob(data));
-        //     var blob = new Blob([ab], {type: "application/octet-stream"});
-        //     tryUnzip("data.r0m", blob, callback);
+            // }
+            // if (url.startsWith("data:")) {
+
+            //     var data = url.split('base64,')[1];
+            //     console.log("base64 string: ", data);
+            //     var ab = str2ab(window.atob(data));
+            //     var blob = new Blob([ab], {type: "application/octet-stream"});
+            //     tryUnzip("data.r0m", blob, callback);
         } else {
             var oReq = new XMLHttpRequest();
             oReq.open("GET", url, true);
@@ -111,7 +111,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             extract(entry, callback, start);
         } else {
             if (lower.endsWith("fdd")) {
-                extract(entry, callback_fdd, 
+                extract(entry, callback_fdd,
                     function(rawdata) {
                         var fulldisk = rawdata;
                         if (rawdata.length < 819200) {
@@ -121,14 +121,14 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                         }
                         return fulldisk;
                     }
-                    );
+                );
             }
         }
     };
 
     var buildFddAndLaunch = function(items) {
         // load the рыба first
-        new Loader("roms/ryba.fdd", 
+        new Loader("roms/ryba.fdd",
             function(rom, start) {},
             function() {},
             function(image, start) {
@@ -160,7 +160,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                                     //callback_fdd(fs.bytes, 0);
                                 }
                                 return;
-                            }                             
+                            }
                             console.log("Extracting ", name);
                             if (name.toLowerCase().endsWith("com")) {
                                 initial = name.toUpperCase().split(".")[0];
@@ -174,7 +174,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                                     //callback_fdd(fs.bytes, 0);
                                     finalize(initial);
                                 }
-                            }, 0);           
+                            }, 0);
                         })(items[i].filename);
                     }
                     //callback_fdd(fs, 0);
@@ -302,7 +302,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                     //<input class="upload" type="file" id="fileselect" name="fileselect[]"/>                
                     let input = document.createElement("input");
                     input.className = "upload";
-                    input.type = "file";                
+                    input.type = "file";
                     input.name = "fileselect[]";
                     input.addEventListener("change", fileSelectHandler);
                     fileselect.parentNode.replaceChild(input, fileselect);
@@ -310,8 +310,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 }
 
                 fileselect.addEventListener("change", fileSelectHandler, false);
-            } 
-            else if (target.tagName === "CANVAS") {
+            } else if (target.tagName === "CANVAS") {
                 // try dragover with canvas
                 target.ondragover = function(e) {
                     e.preventDefault();
@@ -334,7 +333,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className = parent.className.replace(/ dragover/g, "");
-                    tryUnzip(e.dataTransfer.files[0].name, e.dataTransfer.files[0], callback);                    
+                    tryUnzip(e.dataTransfer.files[0].name, e.dataTransfer.files[0], callback);
                 }
 
             }

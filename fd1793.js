@@ -3,16 +3,16 @@
 
 //define(["scripts/utils.js"], function(Utils) {
 
-function Utils_() {    
-  this.toHex8 = function (x) {
-    var s = x.toString(16).toUpperCase();
-    return "0".slice(s.length - 1) + s;
-  };
+function Utils_() {
+    this.toHex8 = function(x) {
+        var s = x.toString(16).toUpperCase();
+        return "0".slice(s.length - 1) + s;
+    };
 
-  this.toHex16 = function (x) {
-    var s = x.toString(16).toUpperCase();
-    return "000".slice(s.length - 1) + s;
-  };
+    this.toHex16 = function(x) {
+        var s = x.toString(16).toUpperCase();
+        return "000".slice(s.length - 1) + s;
+    };
 }
 
 var Utils = new Utils_();
@@ -129,7 +129,7 @@ function Floppy() {
             this.track = track;
             this.side = side;
             //if (this.log)
-                console.log("FD1793: disk seek position:", Utils.toHex16(this.position), "(side:" + this.side + ",trk:" + this.track + ",sec:" + sector + ")");
+            console.log("FD1793: disk seek position:", Utils.toHex16(this.position), "(side:" + this.side + ",trk:" + this.track + ",sec:" + sector + ")");
         }
     };
 
@@ -171,7 +171,7 @@ function Floppy() {
         return finished;
     };
 
-    
+
     // Vector-06c floppy: 2 sides, 5 sectors of 1024 bytes
     FDisk.prototype.parse_v06c = function() {
         const FDD_NSECTORS = 5;
@@ -180,7 +180,7 @@ function Floppy() {
             console.warn("FD1793: no disk");
             return;
         }
-        this.tracksPerSide = (this.dsk.length >> 10) / 2*FDD_NSECTORS;
+        this.tracksPerSide = (this.dsk.length >> 10) / 2 * FDD_NSECTORS;
         this.numHeads = 2;
         this.sectorSize = 1024;
         this.sectorsPerTrack = 5;
@@ -481,7 +481,7 @@ function Floppy() {
                 this._dsk.seek(this._track, this._sector, this._side);
                 this._dsk.readSector(this._sector);
                 //if (this._log)
-                    console.log("FD1793: CMD read sector m:", multiple, "p:", Utils.toHex8(param), "sector:", this._sector, "status:", Utils.toHex8(this._status));
+                console.log("FD1793: CMD read sector m:", multiple, "p:", Utils.toHex8(param), "sector:", this._sector, "status:", Utils.toHex8(this._status));
                 this._lingertime = this.LINGER_BEFORE;
                 break;
             case 0x0A: // write sector, m = 0
@@ -546,8 +546,8 @@ function Floppy() {
                 this._pr = val;
                 // Kishinev v06c 
                 // 0 0 1 1 x S A B
-                this._dsk = this._disks[val & 3]; 
-                this._side = ((~val) >> 2) & 1;   // invert side
+                this._dsk = this._disks[val & 3];
+                this._side = ((~val) >> 2) & 1; // invert side
                 if (this._log)
                     console.log("FD1793: set pr:", Utils.toHex8(val),
                         " disk select: ", val & 3, " side: ", this._side);

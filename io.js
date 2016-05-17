@@ -32,7 +32,7 @@ IO.prototype.input = function(port) {
             result = 0xff;
             break;
         case 0x01:
-            result = (this.PC & 0x0f)  | 0x10 | 
+            result = (this.PC & 0x0f) | 0x10 |
                 (keyboard.ss ? 0 : (1 << 5)) |
                 (keyboard.us ? 0 : (1 << 6)) |
                 (keyboard.rus ? 0 : (1 << 7));
@@ -78,19 +78,19 @@ IO.prototype.input = function(port) {
             result = this.ay.read(port & 1);
             break;
 
-        case 0x18:  // fdc data
+        case 0x18: // fdc data
             result = this.fdc.read(3);
             break;
-        case 0x19:  // fdc sector
+        case 0x19: // fdc sector
             result = this.fdc.read(2);
             break;
-        case 0x1a:  // fdc track
+        case 0x1a: // fdc track
             result = this.fdc.read(1);
             break;
-        case 0x1b:  // fdc status
+        case 0x1b: // fdc status
             result = this.fdc.read(0);
             break;
-        case 0x1c:  // fdc control - readonly
+        case 0x1c: // fdc control - readonly
             //result = this.fdc.read(4);
             break;
     }
@@ -98,17 +98,17 @@ IO.prototype.input = function(port) {
 }
 
 IO.prototype.output = function(port, w8) {
-    switch(port) {
-    case 0x08:
-    case 0x09:
-    case 0x0a:
-    case 0x0b:
-        this.Timer.Write((~port & 3), w8);
-        break;
-    default:
-        this.outport = port;
-        this.outbyte = w8;
-        break;
+    switch (port) {
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+            this.Timer.Write((~port & 3), w8);
+            break;
+        default:
+            this.outport = port;
+            this.outbyte = w8;
+            break;
     }
 }
 
@@ -127,11 +127,11 @@ IO.prototype.realoutput = function(port, w8) {
                 if ((this.CW & 1) == 1) {
                     this.PC |= 1 << bit;
                 } else {
-                    this.PC &= ~(1<<bit);
+                    this.PC &= ~(1 << bit);
                 }
                 this.ontapeoutchange(this.PC & 1);
             } else {
-                this.PA = this.PB = this.PC = 0;               
+                this.PA = this.PB = this.PC = 0;
             }
             if (((this.PC & 8) != ruslat) && this.onruslat) {
                 this.onruslat((this.PC & 8) == 0);
@@ -170,12 +170,12 @@ IO.prototype.realoutput = function(port, w8) {
             this.PA2 = w8;
             break;
             // Timer
-        // case 0x08:
-        // case 0x09:
-        // case 0x0a:
-        // case 0x0b:
-        //     this.Timer.Write((~port & 3), w8);
-        //     break;
+            // case 0x08:
+            // case 0x09:
+            // case 0x0a:
+            // case 0x0b:
+            //     this.Timer.Write((~port & 3), w8);
+            //     break;
 
         case 0x0c:
         case 0x0d:
@@ -192,19 +192,19 @@ IO.prototype.realoutput = function(port, w8) {
             this.ay.write(port & 1, w8);
             break;
 
-        case 0x18:  // fdc data
+        case 0x18: // fdc data
             this.fdc.write(3, w8);
             break;
-        case 0x19:  // fdc sector
+        case 0x19: // fdc sector
             this.fdc.write(2, w8);
             break;
-        case 0x1a:  // fdc track
+        case 0x1a: // fdc track
             this.fdc.write(1, w8);
             break;
-        case 0x1b:  // fdc command
+        case 0x1b: // fdc command
             this.fdc.write(0, w8);
             break;
-        case 0x1c:  // fdc control
+        case 0x1c: // fdc control
             this.fdc.write(4, w8);
             break;
     }

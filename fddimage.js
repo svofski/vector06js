@@ -2,14 +2,14 @@
 // FDD image builder
 
 // struct HEADER {
-// 	unsigned char User;
-// 	char Name[8];
-// 	char Ext[3];
-// 	unsigned char Extent;
-// 	unsigned char Unknown1;
-// 	unsigned char Unknown2;
-// 	unsigned char Records;
-// 	WORD FAT[8];
+//  unsigned char User;
+//  char Name[8];
+//  char Ext[3];
+//  unsigned char Extent;
+//  unsigned char Unknown1;
+//  unsigned char Unknown2;
+//  unsigned char Records;
+//  WORD FAT[8];
 // };
 function MDHeader() {
     this.User = 0;
@@ -61,13 +61,13 @@ MDHeader.prototype.ToBytes = function(dst) {
     for (var n = 0; n < 3; n += 1) dst[i + n] = ext.charCodeAt(n);
     i += 3;
     dst[i++] = this.Extent;
-	dst[i++] = this.Unknown1;
-	dst[i++] = this.Unknown2;
-	dst[i++] = this.Records;
-	for (var n = 0; n < 8; n++) {
-		dst[i++] = this.FAT[n] & 0xff;
-		dst[i++] = (this.FAT[n] >> 8) & 0xff;
-	}
+    dst[i++] = this.Unknown1;
+    dst[i++] = this.Unknown2;
+    dst[i++] = this.Records;
+    for (var n = 0; n < 8; n++) {
+        dst[i++] = this.FAT[n] & 0xff;
+        dst[i++] = (this.FAT[n] >> 8) & 0xff;
+    }
 };
 
 MDHeader.prototype.FromName = function(filename) {
@@ -185,13 +185,15 @@ Filesystem.prototype.readBytes = function(dirent) {
     for (var c in dirent.Chain) {
         var clust = dirent.Chain[c] << 1;
         if (clust < 2) {
-        	break;
+            break;
         }
         for (var i = 0; i < 2; i++) {
             var track, head, sector;
             //[track, head, sector] = this.clusterToTHS(clust + i);
             var ths = this.clusterToTHS(clust + i);
-            track = ths[0]; head = ths[1]; sector = ths[2];
+            track = ths[0];
+            head = ths[1];
+            sector = ths[2];
             //console.log("R: translated cluster ", dirent.Chain[c], "/", i, " to THS ", track, head, sector);
             var mapped = this.mapSector(track, head, sector);
             for (var p = 0; p < 1024; p++) {
@@ -211,14 +213,14 @@ Filesystem.prototype.readFile = function(name) {
 };
 
 Filesystem.prototype.listDir = function() {
-	var that = this;
-	this.readDir(function(h) {
+    var that = this;
+    this.readDir(function(h) {
         if (h.User < 0x10 && h.Extent == 0) {
             var d = new Dirent(that).FromHeader(h);
             console.log(h.Name + " " + h.Ext + " " + d.Size);
         }
         return false;
-	});
+    });
 }
 
 const MAXCLUST = 390;
@@ -249,8 +251,8 @@ Filesystem.prototype.saveFile = function(name, bytes) {
     var chain = this.buildAvailableChain();
 
     if (chain.length < bytes.length / 2048) {
-    	console.log("Disk full, remaining clusters:", chain.length);
-    	return false;
+        console.log("Disk full, remaining clusters:", chain.length);
+        return false;
     }
 
     var protoheader = new MDHeader().FromName(name);
@@ -259,8 +261,8 @@ Filesystem.prototype.saveFile = function(name, bytes) {
         var chainIndex = 0;
         var extent = 0;
         fs.readDir(function(h) {
-            if (h.User >= 0x10) { // take this header				
-            	console.log("saveFile: using header ", h.Index, h.Name, h.Ext);
+            if (h.User >= 0x10) { // take this header               
+                console.log("saveFile: using header ", h.Index, h.Name, h.Ext);
                 // allocate clusters
                 proto.Records = Math.ceil(remaining / 128);
                 proto.Extent = extent;
@@ -269,8 +271,8 @@ Filesystem.prototype.saveFile = function(name, bytes) {
                 for (var i = 0; i < 8; i += 1) {
                     proto.FAT[i] = remaining > 0 ? chain[chainIndex] : 0;
                     if (remaining > 0) {
-                    	remaining -= 2048;
-						chainIndex++;
+                        remaining -= 2048;
+                        chainIndex++;
                     }
                 }
                 proto.ToBytes(h.Mapped);
@@ -283,22 +285,24 @@ Filesystem.prototype.saveFile = function(name, bytes) {
     })(this, protoheader, chain, bytes.length);
 
     if (maxChainIdx != 0) {
-    	var srcptr = 0;
-    	for (var eslabon = 0; eslabon < maxChainIdx && srcptr < bytes.length; eslabon += 1) {
-	        var clust = chain[eslabon] << 1;
-	        for (var i = 0; i < 2; i++) {
-	            var track, head, sector;
-	            //[track, head, sector] = this.clusterToTHS(clust + i);
-	            var ths = this.clusterToTHS(clust + i);
-	            track = ths[0]; head = ths[1]; sector = ths[2];
-	            //console.log("W: translated cluster ", chain[eslabon], "/", i, " to THS ", track, head, sector);
-	            var mapped = this.mapSector(track, head, sector);
-	            for (var p = 0; p < 1024; p++) {
-	            	mapped[p] = bytes[srcptr++];
-	            }
-	        }
+        var srcptr = 0;
+        for (var eslabon = 0; eslabon < maxChainIdx && srcptr < bytes.length; eslabon += 1) {
+            var clust = chain[eslabon] << 1;
+            for (var i = 0; i < 2; i++) {
+                var track, head, sector;
+                //[track, head, sector] = this.clusterToTHS(clust + i);
+                var ths = this.clusterToTHS(clust + i);
+                track = ths[0];
+                head = ths[1];
+                sector = ths[2];
+                //console.log("W: translated cluster ", chain[eslabon], "/", i, " to THS ", track, head, sector);
+                var mapped = this.mapSector(track, head, sector);
+                for (var p = 0; p < 1024; p++) {
+                    mapped[p] = bytes[srcptr++];
+                }
+            }
 
-    	}
+        }
     }
 }
 
@@ -309,7 +313,7 @@ function testFilesystem(fs) {
             console.log("File: ", header.Name, ".", header.Ext, " header=", header,
                 " dirent=", new Dirent(fs).FromHeader(header));
         } else {
-            //console.log("Extent ", header.Extent, " header=", header);	    	
+            //console.log("Extent ", header.Extent, " header=", header);            
         }
     });
 
@@ -354,29 +358,29 @@ function testFilesystem(fs) {
             console.log("File: ", header.Name, ".", header.Ext, " header=", header,
                 " dirent=", new Dirent(fs).FromHeader(header));
         } else {
-            //console.log("Extent ", header.Extent, " header=", header);	    	
+            //console.log("Extent ", header.Extent, " header=", header);            
         }
     });
 
     console.log("Searching for new file:")
     var d = fs.findFile("test.rnd");
     if (!d) {
-    	console.log("test.rnd not found");
-    	debugger;
+        console.log("test.rnd not found");
+        debugger;
     }
     console.log("found, comparing contents");
     var readcontents = fs.readFile("test.rnd");
     if (!readcontents) {
-    	console.log("Could not read file");
-    	debugger;
-    	throw '';
+        console.log("Could not read file");
+        debugger;
+        throw '';
     }
     for (var i = 0; i < contents.length; i++) {
-    	if (contents[i] !== readcontents[i]) {
-    		console.log("Contents mismatch pos=", i, "expected=", contents[i].toString(16), "got=", readcontents[i].toString(16));
-    		debugger;
-    		throw '';
-    	}
+        if (contents[i] !== readcontents[i]) {
+            console.log("Contents mismatch pos=", i, "expected=", contents[i].toString(16), "got=", readcontents[i].toString(16));
+            debugger;
+            throw '';
+        }
     }
 
     console.log("Which clusters are unallocated:")

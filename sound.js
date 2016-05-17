@@ -7,7 +7,7 @@
 
 "use strict";
 
-function Soundnik(ay, timer) {    
+function Soundnik(ay, timer) {
     this.aywrapper = new AYWrapper(ay);
     this.timerwrapper = new TimerWrapper(timer);
 
@@ -18,7 +18,7 @@ function Soundnik(ay, timer) {
     this.mask = this.renderingBufferSize - 1;
     this.renderingBuffer = null;
     this.sampleRate = null;
-	this.gainNode = null;
+    this.gainNode = null;
 
     this.soundRatio = 0; //this.soundnik.sampleRate / 1497600.0;
     this.soundAccu = 0.0;
@@ -33,14 +33,14 @@ function Soundnik(ay, timer) {
     if (typeof AudioContext != "undefined") {
         console.debug("AudioContext found");
 
-		var context = window.AudioContext || window.webkitAudioContext;
+        var context = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new context(); //new AudioContext();
         this.sampleRate = this.audioContext.sampleRate;
         this.soundRatio = this.sampleRate / 1497600.0;
 
         this.jsNode = this.audioContext.createScriptProcessor(2048, 0, 2);
-		this.gainNode = this.audioContext.createGain();
-		this.gainNode.gain.value = 1;
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.gain.value = 1;
 
         //this.jsNode.connect(this.audioContext.destination);
         var that = this;
@@ -82,12 +82,12 @@ function Soundnik(ay, timer) {
         this.renderingBuffer = new Float32Array(this.renderingBufferSize);
     }
 
- 
-	this.mute = function(m) {
-		if (this.gainNode) {
-			this.gainNode.gain.value = m ? 0 : 1;
-		}
-	}
+
+    this.mute = function(m) {
+        if (this.gainNode) {
+            this.gainNode.gain.value = m ? 0 : 1;
+        }
+    }
 }
 
 Soundnik.prototype.sample = function(samp) {
@@ -102,9 +102,9 @@ Soundnik.prototype.soundStep = function(step, tapeout) {
     this.soundAccu += this.soundRatio * step / 2;
     if (this.soundAccu >= 1.0) {
         this.soundAccu -= 1.0;
-        var sound = 
-            1.0 * this.timerwrapper.unload() + 
-            this.aywrapper.unload() + 
+        var sound =
+            1.0 * this.timerwrapper.unload() +
+            this.aywrapper.unload() +
             tapeout +
             Math.random() * 0.005;
 
@@ -114,5 +114,4 @@ Soundnik.prototype.soundStep = function(step, tapeout) {
     this.timerwrapper.step(step / 2);
     this.aywrapper.step(step);
 
-}    
-
+}

@@ -8,11 +8,11 @@ var debug_str = "";
 
 function Vector06c(cpu, memory, io, ay) {
     const SCREEN_WIDTH = 512 + 64;
-	const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
-	const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
+    const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
+    const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
     const PIXELS_WIDTH = 512;
     const PIXELS_HEIGHT = 256;
-	const CENTER_OFFSET = 120;
+    const CENTER_OFFSET = 120;
 
     var pause_request = false;
     var onpause = undefined;
@@ -52,8 +52,8 @@ function Vector06c(cpu, memory, io, ay) {
                 buf8 = this.cvsDat.data;
                 for (var loop = 0; loop < buf8.length; loop++) buf8[loop] = 0xFF;
 
-                this.bmp = typeof(Int32Array) != "undefined" ? 
-                    new Int32Array(SCREEN_WIDTH * SCREEN_HEIGHT) : 
+                this.bmp = typeof(Int32Array) != "undefined" ?
+                    new Int32Array(SCREEN_WIDTH * SCREEN_HEIGHT) :
                     new Array(SCREEN_WIDTH * SCREEN_HEIGHT);
             }
         }
@@ -70,7 +70,7 @@ function Vector06c(cpu, memory, io, ay) {
             }
         }
         this.bufferContext.putImageData(this.cvsDat, 0, 0);
-        this.screenContext.drawImage(this.bufferCanvas, 0, 0, 
+        this.screenContext.drawImage(this.bufferCanvas, 0, 0,
             this.screenCanvas.width, this.screenCanvas.height);
     }
 
@@ -79,16 +79,16 @@ function Vector06c(cpu, memory, io, ay) {
     // pixelclock = 12 Mhz (512 pixels/line)
     // 1 CPU cycle (cpu clock) = 4 pixelclocks
     // e.g. MOV A, B 
-    //			== 5 cpu clocks
-    // 			== 8 cpu clocks in Vector-06c machine
-    //			== 8 * 4 = 32 pixelcocks, 32 pixels in mode 512 or 16 pixels in mode 256
+    //          == 5 cpu clocks
+    //          == 8 cpu clocks in Vector-06c machine
+    //          == 8 * 4 = 32 pixelcocks, 32 pixels in mode 512 or 16 pixels in mode 256
     // one raster line = 12e6/15625 
-    // 			== 768 pixels (12Mhz)
-    // 			== 192 CPU cycles
+    //          == 768 pixels (12Mhz)
+    //          == 192 CPU cycles
     // one TV field = 312 lines
     // one interrupt cycle == 312 * 768 = 239616 pixels
-    // 					   == 59904 CPU cycles
-    // 					   == 29952 timer cycles
+    //                     == 59904 CPU cycles
+    //                     == 29952 timer cycles
     // 1/50s = 29952 samples, or 1497600 samples/s
     //
     // ay clock: 1.75Mhz, 7/48 of pixelclock
@@ -143,13 +143,13 @@ function Vector06c(cpu, memory, io, ay) {
                 if (this.CPU.last_opcode == 0x76) { // 0x76 == hlt
                     this.CPU.pc += 1;
                 }
-                this.CPU.execute(0xf3);         // di
-                this.CPU.execute(0xff); 		// 0xff == rst7
-                this.instr_time += 16; 				// execution time known
+                this.CPU.execute(0xf3); // di
+                this.CPU.execute(0xff); // 0xff == rst7
+                this.instr_time += 16; // execution time known
                 //debug_str = "";
             }
 
-            this.CPU.instruction(); 
+            this.CPU.instruction();
             var dbg_op = this.CPU.last_opcode;
             this.instr_time += this.CPU.vcycles;
             if (dbg_op == 0xd3) {
@@ -176,12 +176,12 @@ function Vector06c(cpu, memory, io, ay) {
                 // test:bord2
                 rpixel = raster_pixel - 24;
                 border = vborder ||
-                    /* hborder */ (rpixel < (768 - 512) / 2) || (rpixel >= (768 - (768 - 512) / 2));
+                    /* hborder */
+                    (rpixel < (768 - 512) / 2) || (rpixel >= (768 - (768 - 512) / 2));
                 if (border) {
                     index = this.border_index_cached;
                     fb_column = 0;
-                } 
-                else {
+                } else {
                     if ((rpixel & 0x0f) === 0) {
                         this.fetchPixels(fb_column, fb_row, mem);
                         ++fb_column;
@@ -232,7 +232,7 @@ function Vector06c(cpu, memory, io, ay) {
                     // update vertical border only when line changes
                     vborder = (raster_line < 40) || (raster_line >= (40 + 256));
                     // turn on pixel copying after blanking area
-                    visible |= updateScreen && raster_line === FIRST_VISIBLE_LINE; 
+                    visible |= updateScreen && raster_line === FIRST_VISIBLE_LINE;
                     if (raster_line === 312) {
                         raster_line = 0;
                         visible = false; // blanking starts
@@ -277,7 +277,7 @@ function Vector06c(cpu, memory, io, ay) {
     const ACCELERATION_DELAY = 25;
     const THROTTLE_DELAY = 2;
 
-    this.accelerationDelay = 0; 
+    this.accelerationDelay = 0;
     this.throttleDelay = THROTTLE_DELAY;
     const TARGET_FRAMERATE = 50;
     this.oneFrame = function() {
@@ -307,14 +307,14 @@ function Vector06c(cpu, memory, io, ay) {
             nextFrameTime = new Date().getTime() + (1000 / frameRate);
         } else {
             this.throttleDelay = THROTTLE_DELAY;
-            if (this.frameSkip > 0 && timeWaitUntilNextFrame > 1000/TARGET_FRAMERATE) {
+            if (this.frameSkip > 0 && timeWaitUntilNextFrame > 1000 / TARGET_FRAMERATE) {
                 if (this.accelerationDelay == 0 || --this.accelerationDelay == 0) {
                     --this.frameSkip;
                     this.accelerationDelay = ACCELERATION_DELAY;
                     if (this.onframeskip) {
                         this.onframeskip(this.frameSkip, -timeWaitUntilNextFrame)
                     }
-                } 
+                }
             } else {
                 this.accelerationDelay = ACCELERATION_DELAY;
             }
@@ -346,7 +346,7 @@ function Vector06c(cpu, memory, io, ay) {
 
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
-            timeWaitUntilNextFrame = 0;        
+            timeWaitUntilNextFrame = 0;
             nextFrameTime = new Date().getTime() + (1000 / frameRate);
             this.updateDisplay = false;
             console.log("feck");
@@ -387,11 +387,11 @@ function Vector06c(cpu, memory, io, ay) {
         this.oneFrame();
     };
 
-	this.resume = function() {
-		pause_request = false;
-		paused = false;
-		this.oneFrame();
-	}
+    this.resume = function() {
+        pause_request = false;
+        paused = false;
+        this.oneFrame();
+    }
 
     this.pause = function(callback) {
         if (!paused) {
@@ -413,9 +413,13 @@ Vector06c.prototype.fetchPixels = function(column, row, mem) {
 
 Vector06c.prototype.shiftOutPixels = function() {
     var pixels = this.pixels;
-    var index_modeless = ((pixels[0] & 0x80) >> 4); pixels[0] <<= 1;
-    index_modeless |= ((pixels[1] & 0x80) >> 5); pixels[1] <<= 1;
-    index_modeless |= ((pixels[2] & 0x80) >> 6); pixels[2] <<= 1;
-    index_modeless |= ((pixels[3] & 0x80) >> 7); pixels[3] <<= 1;
+    var index_modeless = ((pixels[0] & 0x80) >> 4);
+    pixels[0] <<= 1;
+    index_modeless |= ((pixels[1] & 0x80) >> 5);
+    pixels[1] <<= 1;
+    index_modeless |= ((pixels[2] & 0x80) >> 6);
+    pixels[2] <<= 1;
+    index_modeless |= ((pixels[3] & 0x80) >> 7);
+    pixels[3] <<= 1;
     return index_modeless;
 }
