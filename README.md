@@ -9,3 +9,10 @@ This emulator is integrated into the Vector06c software archive: http://asdasd.r
 
 It also works as a sandbox execution environment for the Pretty i8080 Assembler: http://asdasd.rpg.fi/~svo/i8080/ Try pressing RUN.
 
+It uses a fork of 8080-js optimized for performance. Original i8080-js by Alexander Demin: https://github.com/begoon/i8080-js
+
+For zip handling, it relies on zip.js by Gildas Lormeau https://gildas-lormeau.github.io/zip.js/
+
+---
+(c) 2016 Viacheslav Slavinsky 
+http://sensi.org/~svo
