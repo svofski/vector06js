@@ -22,7 +22,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             }
         }
         return buf;
-    }
+    };
 
     var fetchROM2 = function(url, callback, callback_error) {
         var name = url['name'];
@@ -70,11 +70,11 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             oReq.onerror = function(oEvent) {
                 console.log("XMLHttpRequest error", oEvent);
                 callback_error();
-            }
+            };
 
             oReq.send();
         }
-    }
+    };
 
     var readData = function(blob, callback, start) {
         var reader = new FileReader();
@@ -87,7 +87,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             }
         });
         reader.readAsArrayBuffer(blob);
-    }
+    };
 
     var extract = function(entry, callback, start) {
         if (entry['blob']) {
@@ -99,7 +99,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 readData(data, callback, start);
             });
         }
-    }
+    };
 
     var extractAndLaunch = function(entry) {
         var lower = entry.filename.toLowerCase();
@@ -181,7 +181,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 }
                 //debugger;
             });
-    }
+    };
 
     var isRom = function(name) {
         var lower = name.toLowerCase();
@@ -279,7 +279,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             });
 
         return undefined;
-    }
+    };
 
     var initDrop = function(inputs) {
         for (let inputId in inputs) {
@@ -338,7 +338,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
 
             }
         }
-    }
+    };
 
     this.attachDrop = function(fileselect) {
         if (window.File && window.FileList && window.FileReader) {

@@ -38,14 +38,14 @@ IO.prototype.input = function(port) {
                 (keyboard.rus ? 0 : (1 << 7));
             break;
         case 0x02:
-            if ((this.CW & 0x02) != 0) {
+            if ((this.CW & 0x02) !== 0) {
                 result = keyboard.Read(~this.PA);
             } else {
                 result = 0xff;
             }
             break;
         case 0x03:
-            if ((this.CW & 0x10) == 0) {
+            if ((this.CW & 0x10) === 0) {
                 result = 0x00;
             } else {
                 result = 0xff;
@@ -93,9 +93,11 @@ IO.prototype.input = function(port) {
         case 0x1c: // fdc control - readonly
             //result = this.fdc.read(4);
             break;
+        default:
+            break;
     }
     return result;
-}
+};
 
 IO.prototype.output = function(port, w8) {
     switch (port) {
@@ -110,21 +112,22 @@ IO.prototype.output = function(port, w8) {
             this.outbyte = w8;
             break;
     }
-}
+};
 
 IO.prototype.realoutput = function(port, w8) {
+    var ruslat;
     switch (port) {
         // PIA 
         case 0x00:
             this.CW = w8;
-            var ruslat = this.PC & 8;
-            if ((this.CW & 0x80) == 0) {
+            ruslat = this.PC & 8;
+            if ((this.CW & 0x80) === 0) {
 
                 // port C BSR: 
                 //   bit 0: 1 = set, 0 = reset
                 //   bit 1-3: bit number
                 var bit = (this.CW >> 1) & 7;
-                if ((this.CW & 1) == 1) {
+                if ((this.CW & 1) === 1) {
                     this.PC |= 1 << bit;
                 } else {
                     this.PC &= ~(1 << bit);
@@ -134,24 +137,24 @@ IO.prototype.realoutput = function(port, w8) {
                 this.PA = this.PB = this.PC = 0;
             }
             if (((this.PC & 8) != ruslat) && this.onruslat) {
-                this.onruslat((this.PC & 8) == 0);
+                this.onruslat((this.PC & 8) === 0);
             }
             // if (debug) {
             //     console.log("output commit cw = ", this.CW.toString(16));
             // }
             break;
         case 0x01:
-            var ruslat = this.PC & 8;
+            ruslat = this.PC & 8;
             this.PC = w8;
             this.ontapeoutchange(this.PC & 1);
             if (((this.PC & 8) != ruslat) && this.onruslat) {
-                this.onruslat((this.PC & 8) == 0);
+                this.onruslat((this.PC & 8) === 0);
             }
             break;
         case 0x02:
             this.PB = w8;
             this.onborderchange(this.PB & 0x0f);
-            this.onmodechange((this.PB & 0x10) != 0);
+            this.onmodechange((this.PB & 0x10) !== 0);
             break;
         case 0x03:
             this.PA = w8;
@@ -207,15 +210,17 @@ IO.prototype.realoutput = function(port, w8) {
         case 0x1c: // fdc control
             this.fdc.write(4, w8);
             break;
+        default:
+            break;
     }
-}
+};
 
 IO.prototype.commit = function() {
     if (this.outport != undefined) {
         this.realoutput(this.outport, this.outbyte);
         this.outport = this.outbyte = undefined;
     }
-}
+};
 
 IO.prototype.commit_palette = function(index) {
     var w8 = this.palettebyte;
@@ -234,24 +239,24 @@ IO.prototype.commit_palette = function(index) {
             (r << (5 + 0));
         this.palettebyte = undefined;
     }
-}
+};
 
 IO.prototype.interrupt = function(iff) {
     this.iff = iff;
-}
+};
 
 IO.prototype.BorderIndex = function() {
     return this.PB & 0x0f;
-}
+};
 
 IO.prototype.ScrollStart = function() {
     return this.PA;
-}
+};
 
 IO.prototype.Mode512 = function() {
-    return (this.PB & 0x10) != 0;
-}
+    return (this.PB & 0x10) !== 0;
+};
 
 IO.prototype.TapeOut = function() {
     return this.PC & 1;
-}
+};

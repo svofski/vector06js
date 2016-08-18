@@ -71,7 +71,7 @@ function Soundnik(ay, timer) {
             } else {
                 //console.debug("audio starved");
             }
-        }
+        };
         this.jsNode.connect(this.gainNode);
         this.gainNode.connect(this.audioContext.destination);
 
@@ -87,7 +87,7 @@ function Soundnik(ay, timer) {
         if (this.gainNode) {
             this.gainNode.gain.value = m ? 0 : 1;
         }
-    }
+    };
 }
 
 Soundnik.prototype.sample = function(samp) {
@@ -96,7 +96,7 @@ Soundnik.prototype.sample = function(samp) {
         this.renderingBuffer[this.sndCount] = samp;
         this.sndCount = plus1;
     }
-}
+};
 
 Soundnik.prototype.soundStep = function(step, tapeout) {
     this.soundAccu += this.soundRatio * step / 2;
@@ -113,5 +113,4 @@ Soundnik.prototype.soundStep = function(step, tapeout) {
 
     this.timerwrapper.step(step / 2);
     this.aywrapper.step(step);
-
-}
+};

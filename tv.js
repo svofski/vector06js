@@ -72,7 +72,7 @@ function Vector06c(cpu, memory, io, ay) {
         this.bufferContext.putImageData(this.cvsDat, 0, 0);
         this.screenContext.drawImage(this.bufferCanvas, 0, 0,
             this.screenCanvas.width, this.screenCanvas.height);
-    }
+    };
 
     // one cycle 
     // CPU clock = 3 MHz
@@ -308,11 +308,11 @@ function Vector06c(cpu, memory, io, ay) {
         } else {
             this.throttleDelay = THROTTLE_DELAY;
             if (this.frameSkip > 0 && timeWaitUntilNextFrame > 1000 / TARGET_FRAMERATE) {
-                if (this.accelerationDelay == 0 || --this.accelerationDelay == 0) {
+                if (this.accelerationDelay === 0 || --this.accelerationDelay === 0) {
                     --this.frameSkip;
                     this.accelerationDelay = ACCELERATION_DELAY;
                     if (this.onframeskip) {
-                        this.onframeskip(this.frameSkip, -timeWaitUntilNextFrame)
+                        this.onframeskip(this.frameSkip, -timeWaitUntilNextFrame);
                     }
                 }
             } else {
@@ -391,7 +391,7 @@ function Vector06c(cpu, memory, io, ay) {
         pause_request = false;
         paused = false;
         this.oneFrame();
-    }
+    };
 
     this.pause = function(callback) {
         if (!paused) {
@@ -409,7 +409,7 @@ Vector06c.prototype.fetchPixels = function(column, row, mem) {
     this.pixels[1] = mem[0xa000 + addr];
     this.pixels[2] = mem[0xc000 + addr];
     this.pixels[3] = mem[0xe000 + addr];
-}
+};
 
 Vector06c.prototype.shiftOutPixels = function() {
     var pixels = this.pixels;
@@ -422,4 +422,4 @@ Vector06c.prototype.shiftOutPixels = function() {
     index_modeless |= ((pixels[3] & 0x80) >> 7);
     pixels[3] <<= 1;
     return index_modeless;
-}
+};

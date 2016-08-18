@@ -28,7 +28,7 @@ Counter.prototype.Latch = function(w8) {
     this.Count(LATCH_DELAY);
     this.borrow = LATCH_DELAY;
     this.latch_value = this.value;
-}
+};
 
 Counter.prototype.SetMode = function(new_mode, new_latch_mode) {
     this.Count(WRITE_DELAY);
@@ -66,7 +66,7 @@ Counter.prototype.SetMode = function(new_mode, new_latch_mode) {
     this.load = false;
     this.latch_mode = new_latch_mode;
     this.write_state = 0;
-}
+};
 
 Counter.prototype.write_value = function(w8) {
     this.Count(WRITE_DELAY);
@@ -85,6 +85,8 @@ Counter.prototype.write_value = function(w8) {
                 this.loadvalue = ((this.write_msb << 8) & 0xffff) | (this.write_lsb & 0xff);
                 this.load = true;
                 break;
+            default:
+                break;
         }
     } else if (this.latch_mode == 1) {
         // lsb only
@@ -99,26 +101,26 @@ Counter.prototype.write_value = function(w8) {
         this.loadvalue = this.value;
         this.load = true;
     }
-}
+};
 
 Counter.prototype.read_value = function() {
     this.Count(READ_DELAY);
     this.borrow = READ_DELAY;
-
+    var value;
     switch (this.latch_mode) {
     case 0:
         // impossibru
         break;
     case 1:
-        var value = this.latch_value ? this.latch_value : this.value;
+        value = this.latch_value ? this.latch_value : this.value;
         this.latch_value = undefined; 
         return value & 0xff;
     case 2:
-        var value = this.latch_value ? this.latch_value : this.value;
+        value = this.latch_value ? this.latch_value : this.value;
         this.latch_value = undefined; 
         return (value >> 8) & 0xff;
     case 3:
-        var value = this.latch_value ? this.latch_value : this.value;
+        value = this.latch_value ? this.latch_value : this.value;
         switch(this.write_state) {
         case 0:
             this.write_state = 1;
@@ -127,10 +129,15 @@ Counter.prototype.read_value = function() {
             this.latch_value = undefined;
             this.write_state = 0;
             return (value >> 8) & 0xff;
+        default:
+            break;
         }
         break;
+    default:
+        break;
     }
-}
+    return 0; // impossible
+};
 
 Counter.prototype.Count = function(cycles) {
     if (this.borrow !== 0) {
@@ -197,7 +204,7 @@ Counter.prototype.Count = function(cycles) {
 
                 // odd adjust immediately to make the main loop tighter
                 if ((this.value & 1) == 1) {
-                    this.value -= this.out == 0 ? 3 : 1;
+                    this.value -= this.out === 0 ? 3 : 1;
                     --cycles;
                 }
             }
@@ -208,7 +215,7 @@ Counter.prototype.Count = function(cycles) {
                     this.out ^= 1;
                     // odd adjust immediately to make the main loop tighter
                     if ((this.value & 1) == 1) {
-                        this.value -= this.out == 0 ? 3 : 1;
+                        this.value -= this.out === 0 ? 3 : 1;
                         this.borrow = 1;
                     }
 
@@ -219,10 +226,12 @@ Counter.prototype.Count = function(cycles) {
             break;
         case 5: // Hardware triggered strobe
             break;
+        default:
+            break;
     }
 
     return this.out;
-}
+};
 
 function I8253() {
 	this.counters = [new Counter(), new Counter(), new Counter()];
@@ -238,12 +247,12 @@ I8253.prototype.write_cw = function(w8) {
     var bcd_set = (w8 & 1);
 
     var ctr = this.counters[counter_set];
-	if (latch_set == 0) {
+	if (latch_set === 0) {
     	ctr.Latch(latch_set);
 	} else {
 		ctr.SetMode(mode_set, latch_set);
 	}
-}
+};
 
 I8253.prototype.Write = function(addr, w8) {
     switch (addr & 3) {
@@ -252,7 +261,7 @@ I8253.prototype.Write = function(addr, w8) {
         default:
             return this.counters[addr & 3].write_value(w8);
     }
-}
+};
 
 I8253.prototype.Read = function(addr) {
     switch (addr & 3) {
@@ -261,13 +270,13 @@ I8253.prototype.Read = function(addr) {
         default:
             return this.counters[addr & 3].read_value();
     }
-}
+};
 
 I8253.prototype.Count = function(cycles) {
     return this.counters[0].Count(cycles) +
          this.counters[1].Count(cycles) +
          this.counters[2].Count(cycles);
-}
+};
 
 function TimerWrapper(timer) {
     this.timer = timer;
@@ -278,11 +287,10 @@ function TimerWrapper(timer) {
 TimerWrapper.prototype.step = function(cycles) {
     this.sound += this.timer.Count(cycles);
     this.average_count += 8; // so that it's not too loud
-}
+};
 
 TimerWrapper.prototype.unload = function() {
     var result = this.sound / this.average_count;
     this.sound = this.average_count = 0;
     return result;
-}
-
+};

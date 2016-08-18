@@ -13,11 +13,11 @@ function Memory() {
 }
 
 Memory.prototype.control_write = function(w8) {
-    this.mode_stack = (w8 & 0x10) != 0;
-    this.mode_map = (w8 & 0x20) != 0;
+    this.mode_stack = (w8 & 0x10) !== 0;
+    this.mode_map = (w8 & 0x20) !== 0;
     this.page_map = ((w8) & 3) + 1;
     this.page_stack = (((w8) & 0xc) >> 2) + 1;
-}
+};
 
 Memory.prototype.bigram_select = function(addr, stackrq) {
     if (!(this.mode_map || this.mode_stack)) {
@@ -28,18 +28,18 @@ Memory.prototype.bigram_select = function(addr, stackrq) {
         return addr + (this.page_map << 16);
     }
     return addr;
-}
+};
 
 Memory.prototype.read = function(addr, stackrq) {
     if (this.bootbytes && addr < this.bootbytes.length) {
         return this.bootbytes[addr];
     }
     return this.bytes[this.bigram_select(addr & 0xffff, stackrq)];
-}
+};
 
 Memory.prototype.write = function(addr, w8, stackrq) {
     this.bytes[this.bigram_select(addr & 0xffff, stackrq)] = w8;
-}
+};
 
 Memory.prototype.init_from_array = function(array, start_addr) {
     for (var i = this.bytes.length; --i >= 0;) {
@@ -48,18 +48,18 @@ Memory.prototype.init_from_array = function(array, start_addr) {
     for (var i = 0, end = array.length; i < end; i++) {
         this.write(start_addr + i, array[i], false);
     }
-}
+};
 
 Memory.prototype.attach_boot = function(array) {
     this.bootbytes = new Uint8Array(array.length);
     for (var i = array.length; --i >= 0;) {
         this.bootbytes[i] = array[i];
     }
-}
+};
 
 Memory.prototype.detach_boot = function() {
     this.bootbytes = undefined;
-}
+};
 
 Memory.prototype.dump = function() {
     var s = "";
@@ -67,7 +67,7 @@ Memory.prototype.dump = function() {
     for (var i = 0; i < 8192;) {
         s += this.bytes[i].toString(16) + " ";
         ++i;
-        if (i % 16 == 0) {
+        if (i % 16 === 0) {
             console.log(addr.toString(16) + "  " + s);
             s = "";
             addr += 16;

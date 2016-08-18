@@ -5,6 +5,7 @@
                     "path": ".",
                     "file_exclude_patterns":
                     [
+                            ".*",
                             "*.o",
                             "*.a",
                             "*.d",
