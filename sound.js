@@ -5,6 +5,9 @@
 // www.mdawson.net/vic20chrome/vic20.php
 // A large portion of this code has been pulled from that project
 
+
+// exported Soundnik
+
 "use strict";
 
 function Soundnik(ay, timer) {

@@ -50,14 +50,6 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             } else {
                 tryUnzip(url['name'], blob, callback);
             }
-            // }
-            // if (url.startsWith("data:")) {
-
-            //     var data = url.split('base64,')[1];
-            //     console.log("base64 string: ", data);
-            //     var ab = str2ab(window.atob(data));
-            //     var blob = new Blob([ab], {type: "application/octet-stream"});
-            //     tryUnzip("data.r0m", blob, callback);
         } else {
             var oReq = new XMLHttpRequest();
             oReq.open("GET", url, true);
@@ -116,8 +108,9 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                         var fulldisk = rawdata;
                         if (rawdata.length < 819200) {
                             fulldisk = new Uint8Array(819200);
-                            for (var i = rawdata.length; --i >= 0; fulldisk[i] = rawdata[i]);
-                            for (var i = fulldisk.length; --i >= rawdata.length; fulldisk[i] = 0xe5);
+                            var i;
+                            for (i = rawdata.length; --i >= 0; fulldisk[i] = rawdata[i]);
+                            for (i = fulldisk.length; --i >= rawdata.length; fulldisk[i] = 0xe5);
                         }
                         return fulldisk;
                     }
@@ -133,11 +126,10 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             function() {},
             function(image, start) {
                 var fs = new Filesystem(0).FromArray(image);
-                //callback_fdd(fs.bytes, 0);
                 console.log("рыба");
                 if (fs) {
                     var asynccount = items.length;
-                    var initial = undefined;
+                    var initial;
                     for (var i = 0; i < items.length; i += 1) {
                         var name = items[i].filename;
                         var finalize = function(initial) {
@@ -157,7 +149,6 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                                 console.log("Not including ", name);
                                 if (--asynccount === 0) {
                                     finalize(initial);
-                                    //callback_fdd(fs.bytes, 0);
                                 }
                                 return;
                             }
@@ -171,13 +162,11 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                                 if (--asynccount === 0) {
                                     console.log("All files saved, boot");
                                     fs.listDir();
-                                    //callback_fdd(fs.bytes, 0);
                                     finalize(initial);
                                 }
                             }, 0);
                         })(items[i].filename);
                     }
-                    //callback_fdd(fs, 0);
                 }
                 //debugger;
             });
@@ -198,7 +187,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         var container = document.getElementById(container_id);
 
         var build = document.createElement("div");
-        build.id = "buildhdr"
+        build.id = "buildhdr";
         container.appendChild(build);
         build.innerText = "[OR BUILD A BOOTABLE FLOPPY IMAGE]";
         (function(itemz) {
@@ -223,9 +212,9 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             a.innerText = items[i].filename;
             (function(clickitem) {
                 li.onclick = function() {
-                    parent.style.display = "none"
+                    parent.style.display = "none";
                     extractAndLaunch(clickitem);
-                }
+                };
             })(items[i]);
             if (isRom(items[i].filename)) {
                 li.className = "chooser-li-rom";
@@ -234,10 +223,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             } else {
                 li.className = "chooser-li-wtf";
             }
-
-
             ol.appendChild(li);
-
         }
 
         parent.style.display = "block";
@@ -251,13 +237,6 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                         var validlist = [];
                         for (var i = 0; i < entries.length; i++) {
                             var lower = entries[i].filename.toLowerCase();
-                            // if (lower.endsWith("rom") ||
-                            //     lower.endsWith("r0m") ||
-                            //     lower.endsWith("com") ||
-                            //     lower.endsWith("bin") ||
-                            //     lower.endsWith("fdd")) {
-                            //     validlist.push(entries[i]);
-                            // }
                             validlist.push(entries[i]);
                         }
                         if (validlist.length == 1) {
@@ -289,8 +268,8 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 continue;
             }
             if (target.tagName === "INPUT") {
-                var fileSelectHandler = function(e) {
-                    var fileselect = document.getElementById(inputId);
+                var fileSelectHandler = function(e) {                    
+                    var fileselect = document.getElementById(inputs[inputId]);
                     console.log("fileSelectHandler e=", fileselect.files[0]);
                     if (Loader.prototype.ChooserElement) {
                         Loader.prototype.ChooserElement.style.display = "none";
@@ -307,35 +286,34 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                     input.addEventListener("change", fileSelectHandler);
                     fileselect.parentNode.replaceChild(input, fileselect);
                     input.id = "fileselect";
-                }
+                };
 
-                fileselect.addEventListener("change", fileSelectHandler, false);
+                target.addEventListener("change", fileSelectHandler, false);
             } else if (target.tagName === "CANVAS") {
                 // try dragover with canvas
                 target.ondragover = function(e) {
                     e.preventDefault();
-                }
+                };
                 target.ondragenter = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className += " dragover";
-                }
+                };
                 target.ondragleave = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className = parent.className.replace(/ dragover/g, "");
                     //parent.className = parent.className.substring(parent.className.length - " dragover".length);
-                }
+                };
                 target.ondragend = function(e) {
                     e.preventDefault();
-                }
+                };
                 target.ondrop = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className = parent.className.replace(/ dragover/g, "");
                     tryUnzip(e.dataTransfer.files[0].name, e.dataTransfer.files[0], callback);
-                }
-
+                };
             }
         }
     };
@@ -344,8 +322,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         if (window.File && window.FileList && window.FileReader) {
             initDrop(fileselect);
         }
-    }
-
+    };
 
     fetchROM2(url, callback, callback_error);
 }

@@ -580,14 +580,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     
     zip.workerScriptsPath = './zip.js/WebContent/';
     memory = new Memory();
-    keyboard = new Keyboard();
-    keyboard.Hook();
+    keyboard2 = new Keyboard();
+    keyboard2.Hook();
     timer = new I8253();
     ay = new AY();
     var fd1793 = Floppy().FD1793;
     floppy = new fd1793();
     //floppy._log = true;
-    io = new IO(keyboard, timer, memory, ay, floppy);
+    io = new IO(keyboard2, timer, memory, ay, floppy);
     cpu = new I8080(memory, io);
     v06c = new Vector06c(cpu, memory, io, ay);
     v06c.frameSkip = 0;
@@ -663,7 +663,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         window.addEventListener('blur', _onblur);
     });
 
-    keyboard.onreset = function(attach_rom) {
+    keyboard2.onreset = function(attach_rom) {
         if (attach_rom && boot) {
             memory.attach_boot(boot);
         }
@@ -740,7 +740,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         }
     };
     blksbr = function(reboot) {
-        keyboard.onreset(reboot);
+        keyboard2.onreset(reboot);
     };
     sideload = function(mem) {
         sideloaded = mem;

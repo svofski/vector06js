@@ -1,6 +1,8 @@
 // fd1793.js from Videoton TV-Computer project by Bela Babik
 // https://github.com/teki/jstvc
 
+"use strict";
+
 //define(["scripts/utils.js"], function(Utils) {
 
 function Utils_() {
@@ -28,12 +30,13 @@ function Floppy() {
     var bufferAlloc = function(size, data) {
         var buf = new Uint8Array(size);
         if (data) {
+            var i;
             if (typeof(data) == "string") {
-                for (var i = 0; i < size; i++) {
+                for (i = 0; i < size; i++) {
                     buf[i] = data.charCodeAt(i);
                 }
             } else {
-                for (var i = 0; i < size; i++) {
+                for (i = 0; i < size; i++) {
                     buf[i] = data[i];
                 }
             }

@@ -1,6 +1,9 @@
+"use strict";
+
 function IO(keyboard, timer, kvaz, ay, fdc) {
     this.iff = false;
     this.Palette = new Uint32Array(16);
+    this.keyboard = keyboard;
     this.Timer = timer;
     this.Kvaz = kvaz;
     this.fdc = fdc;
@@ -33,13 +36,13 @@ IO.prototype.input = function(port) {
             break;
         case 0x01:
             result = (this.PC & 0x0f) | 0x10 |
-                (keyboard.ss ? 0 : (1 << 5)) |
-                (keyboard.us ? 0 : (1 << 6)) |
-                (keyboard.rus ? 0 : (1 << 7));
+                (this.keyboard.ss ? 0 : (1 << 5)) |
+                (this.keyboard.us ? 0 : (1 << 6)) |
+                (this.keyboard.rus ? 0 : (1 << 7));
             break;
         case 0x02:
             if ((this.CW & 0x02) !== 0) {
-                result = keyboard.Read(~this.PA);
+                result = this.keyboard.Read(~this.PA);
             } else {
                 result = 0xff;
             }
@@ -71,7 +74,6 @@ IO.prototype.input = function(port) {
         case 0x0a:
         case 0x0b:
             return this.Timer.Read(~(port & 3));
-            break;
 
         case 0x14:
         case 0x15:
@@ -161,7 +163,7 @@ IO.prototype.realoutput = function(port, w8) {
             break;
             // PPI2
         case 0x04:
-            CW2 = w8;
+            this.CW2 = w8;
             break;
         case 0x05:
             this.PC2 = w8;
@@ -216,7 +218,7 @@ IO.prototype.realoutput = function(port, w8) {
 };
 
 IO.prototype.commit = function() {
-    if (this.outport != undefined) {
+    if (this.outport !== undefined) {
         this.realoutput(this.outport, this.outbyte);
         this.outport = this.outbyte = undefined;
     }
@@ -224,11 +226,11 @@ IO.prototype.commit = function() {
 
 IO.prototype.commit_palette = function(index) {
     var w8 = this.palettebyte;
-    if (w8 == undefined && this.outport == 0x0c) {
+    if (w8 === undefined && this.outport === 0x0c) {
         w8 = this.outbyte;
         this.outport = this.outbyte = undefined;
     }
-    if (w8 != undefined) {
+    if (w8 !== undefined) {
         var b = (w8 & 0xc0) >> 6;
         var g = (w8 & 0x38) >> 3;
         var r = (w8 & 0x07);

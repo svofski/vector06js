@@ -2,6 +2,9 @@
 //
 // Keyboard interface
 //
+
+"use strict";
+
 function Keyboard() {
     this.matrix = new Uint8Array(8);
     this.ss = false;
@@ -11,36 +14,36 @@ function Keyboard() {
 
     this.cancelKeyEvent = function(e) {
         if (window.event) {
-            try { window.event.keyCode = 0; } catch (e) {}
+            try { window.event.keyCode = 0; } catch (ex) {}
             window.event.returnValue = false;
             window.event.cancelBubble = true;
         }
         if (e.preventDefault) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
-    }
+    };
 
     var that = this;
     this.keyDown = function(e) {
         var keyCode = document.all ? event.keyCode : e.which;
-        keyboard.cancelKeyEvent(e);
+        that.cancelKeyEvent(e);
         if (keyCode === 122 || keyCode === 123) { // F11, F12
             that.onreset(keyCode === 122);
         } else {
-            keyboard.applyKey(keyCode, false);
+            that.applyKey(keyCode, false);
         }
         return false;
-    }
+    };
 
     this.keyUp = function(e) {
         var keyCode = document.all ? event.keyCode : e.which;
-        keyboard.cancelKeyEvent(e);
+        that.cancelKeyEvent(e);
         if (keyCode === 122 || keyCode === 123) {
             // ignore reset keys
         } else {
-            keyboard.applyKey(keyCode, true);
+            that.applyKey(keyCode, true);
         }
         return false;
-    }
+    };
 
     // Keyboard encoding matrix:
     //   │ 7   6   5   4   3   2   1   0
@@ -53,7 +56,7 @@ function Keyboard() {
     // 2 │ 7   6   5   4   3   2   1   0
     // 1 │F5  F4  F3  F2  F1  AP2 CTP ^\
     // 0 │DN  RT  UP  LT  ЗАБ ВК  ПС  TAB	
-    keymap = {
+    var keymap = {
     	32: [7, 0x80], 192: [7, 0x40], 221: [7, 0x20], 220: [7, 0x10], 219: [7, 0x08],	90: [7, 0x04],	89: [7, 0x02],	88: [7, 0x01],
     	87: [6, 0x80], 	86: [6, 0x40],	85: [6, 0x20],  84: [6, 0x10],	83: [6, 0x08],	82: [6, 0x04],	81: [6, 0x02],	80: [6, 0x01],
     	79: [5, 0x80], 	78: [5, 0x40],	77: [5, 0x20],  76: [5, 0x10],	75: [5, 0x08],	74: [5, 0x04],	73: [5, 0x02],	72: [5, 0x01],
@@ -70,11 +73,11 @@ function Keyboard() {
         if (keyup) {
             apply = function(mat, column, bv) {
                 mat[column] &= ~bv;
-            }
+            };
         } else {
             apply = function(mat, column, bv) {
                 mat[column] |= bv;
-            }
+            };
         }
         switch (sym) {
             // shift keys
@@ -107,38 +110,39 @@ function Keyboard() {
                     col = colbit[0];
                     bit = colbit[1];
                 }
-                if (col != undefined) {
+                if (col !== undefined) {
                     apply(this.matrix, col, bit);
                 }
                 break;
         }
         //debug = !keyup;
-    }
+    };
 
     this.Read = function(row) {
         //console.log("kbd read, row=", row.toString(16));
         var result = 0;
         var rowbit = row;
         for (var i = 0; i < 8; i += 1) {
-            if ((rowbit & 0x01) != 0) {
+            if ((rowbit & 0x01) !== 0) {
                 result |= this.matrix[i];
             }
             rowbit >>= 1;
         }
         //console.log("kbd read=", result.toString(2));
         return (~result) & 0xff;
-    }
+    };
 
     this.Hook = function() {
         document.onkeypress = function() {
-            return false };
+            return false;
+        };
         document.onkeydown = this.keyDown;
         document.onkeyup = this.keyUp;
-    }
+    };
 
     this.Unhook = function() {
-        document.onkeypress = null
+        document.onkeypress = null;
         document.onkeydown = null;
         document.onkeyup = null;
-    }
+    };
 }

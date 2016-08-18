@@ -1,3 +1,5 @@
+"use strict";
+
 function Memory() {
     this.bytes = new Uint8Array(65536 + 256 * 1024);
     this.bootbytes = undefined;
@@ -22,7 +24,7 @@ Memory.prototype.control_write = function(w8) {
 Memory.prototype.bigram_select = function(addr, stackrq) {
     if (!(this.mode_map || this.mode_stack)) {
         return addr;
-    } else if (this.mode_stack && stackrq != undefined && stackrq) {
+    } else if (this.mode_stack && stackrq !== undefined && stackrq) {
         return addr + (this.page_stack << 16);
     } else if (this.mode_map && addr >= 0xa000 && addr < 0xe000) {
         return addr + (this.page_map << 16);
@@ -42,10 +44,11 @@ Memory.prototype.write = function(addr, w8, stackrq) {
 };
 
 Memory.prototype.init_from_array = function(array, start_addr) {
-    for (var i = this.bytes.length; --i >= 0;) {
+    var i, end;
+    for (i = this.bytes.length; --i >= 0;) {
         this.bytes[i] = 0;
     }
-    for (var i = 0, end = array.length; i < end; i++) {
+    for (i = 0, end = array.length; i < end; i++) {
         this.write(start_addr + i, array[i], false);
     }
 };

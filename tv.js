@@ -1,6 +1,8 @@
 // vector-06js (c) 2016 Viacheslav Slavinsky
 // Main board
 
+// jshint undef: true, unused: true
+
 "use strict";
 
 var debug = false;
@@ -15,7 +17,7 @@ function Vector06c(cpu, memory, io, ay) {
     const CENTER_OFFSET = 120;
 
     var pause_request = false;
-    var onpause = undefined;
+    var onpause;
     var paused = true;
 
     this.frameSkip = 0;
@@ -26,7 +28,7 @@ function Vector06c(cpu, memory, io, ay) {
 
     this.soundnik = new Soundnik(ay, this.IO.Timer);
 
-    var w, h, buf8, data2;
+    var w, h, buf8;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
         if (this.bufferCanvas === undefined || SCREEN_WIDTH != w || SCREEN_HEIGHT != h) {
@@ -161,14 +163,11 @@ function Vector06c(cpu, memory, io, ay) {
             }
 
             // fill pixels
-            //var mode512 = this.IO.Mode512();
-            var index_modeless = 0;
-            var rpixel, hborder, border;
+            var rpixel, border;
             var i, end;
             // create locals shorthands to busy arrays
             const bmp = this.bmp;
             const palette = this.Palette;
-            const pixels = this.pixels;
             var mode512 = this.mode512;
             for (i = 0, end = this.instr_time << 2; i < end && !brk; i += 2) {
                 // this offset is important for matching i/o writes 
