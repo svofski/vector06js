@@ -1,0 +1,3 @@
+[submodule "i8080-js"]
+	path = i8080-js
+	url = https://github.com/svofski/i8080-js
