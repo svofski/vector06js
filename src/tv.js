@@ -8,6 +8,7 @@
 var debug = false;
 var debug_str = "";
 
+/** @this {Vector06c} */
 function Vector06c(cpu, memory, io, ay) {
     const SCREEN_WIDTH = 512 + 64;
     const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
@@ -328,7 +329,9 @@ function Vector06c(cpu, memory, io, ay) {
                 onpause = undefined;
             }
         } else {
-            setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
+            (function(v) {
+                setTimeout(function() {v.oneFrame();}, timeWaitUntilNextFrame);
+             })(this);
         }
     };
 
@@ -362,7 +365,9 @@ function Vector06c(cpu, memory, io, ay) {
                 onpause = undefined;
             }
         } else {
-            setTimeout('v06c.oneFrame()', timeWaitUntilNextFrame);
+            (function(v) {
+                setTimeout(function() {v.oneFrame();}, timeWaitUntilNextFrame);
+             })(this);
         }
     };
 
