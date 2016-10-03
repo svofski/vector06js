@@ -5,6 +5,7 @@
 
 //define(["scripts/utils.js"], function(Utils) {
 
+/** @constructor */
 function Utils_() {
     this.toHex8 = function(x) {
         var s = x.toString(16).toUpperCase();
@@ -19,6 +20,7 @@ function Utils_() {
 
 var Utils = new Utils_();
 
+/** @constructor */
 function Floppy() {
     var exports = {};
 
@@ -316,7 +318,9 @@ function Floppy() {
     }
 
     FD1793.prototype.loadDsk = function(drive, name, dsk) {
-        if (drive < 0 || drive > 3) throw ("FD1793: illegal drive:", drive);
+        if (drive < 0 || drive > 3) {
+            throw "FD1793: illegal drive:" + drive;
+        }
         if (this._log) console.log("FD1793: loadDsk: " + name);
         this._disks[drive].loadDsk(name, dsk);
     };

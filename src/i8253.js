@@ -1,6 +1,7 @@
 "use strict";
 
-function Counter() {
+/** @constructor */
+function CounterUnit() {
     this.latch_value = 0;    
     this.write_state = 0;
     this.latch_mode = 3;
@@ -24,13 +25,13 @@ const WRITE_DELAY = 8;
 const LATCH_DELAY = 6;
 const READ_DELAY = 0;
 
-Counter.prototype.Latch = function(w8) {
+CounterUnit.prototype.Latch = function(w8) {
     this.Count(LATCH_DELAY);
     this.borrow = LATCH_DELAY;
     this.latch_value = this.value;
 };
 
-Counter.prototype.SetMode = function(new_mode, new_latch_mode) {
+CounterUnit.prototype.SetMode = function(new_mode, new_latch_mode) {
     this.Count(WRITE_DELAY);
     this.borrow = WRITE_DELAY;
 
@@ -68,7 +69,7 @@ Counter.prototype.SetMode = function(new_mode, new_latch_mode) {
     this.write_state = 0;
 };
 
-Counter.prototype.write_value = function(w8) {
+CounterUnit.prototype.write_value = function(w8) {
     this.Count(WRITE_DELAY);
     this.borrow = WRITE_DELAY;
 
@@ -103,7 +104,7 @@ Counter.prototype.write_value = function(w8) {
     }
 };
 
-Counter.prototype.read_value = function() {
+CounterUnit.prototype.read_value = function() {
     this.Count(READ_DELAY);
     this.borrow = READ_DELAY;
     var value;
@@ -139,7 +140,7 @@ Counter.prototype.read_value = function() {
     return 0; // impossible
 };
 
-Counter.prototype.Count = function(cycles) {
+CounterUnit.prototype.Count = function(cycles) {
     if (this.borrow !== 0) {
         cycles -= this.borrow;
         if (cycles < 0) {
@@ -233,8 +234,9 @@ Counter.prototype.Count = function(cycles) {
     return this.out;
 };
 
+/** @constructor */
 function I8253() {
-	this.counters = [new Counter(), new Counter(), new Counter()];
+	this.counters = [new CounterUnit(), new CounterUnit(), new CounterUnit()];
     this.control_word = 0;
 }
 
@@ -278,6 +280,7 @@ I8253.prototype.Count = function(cycles) {
          this.counters[2].Count(cycles);
 };
 
+/** @constructor */
 function TimerWrapper(timer) {
     this.timer = timer;
     this.sound = 0;

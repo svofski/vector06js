@@ -1,5 +1,7 @@
 "use strict";
 
+/** @this {Memory}
+    @export */
 function Memory() {
     this.bytes = new Uint8Array(65536 + 256 * 1024);
     this.bootbytes = undefined;

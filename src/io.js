@@ -1,5 +1,6 @@
 "use strict";
 
+/** @constructor */
 function IO(keyboard, timer, kvaz, ay, fdc) {
     this.iff = false;
     this.Palette = new Uint32Array(16);

@@ -6,6 +6,7 @@
 
 "use strict";
 
+/** @constructor */
 function AY() {
     AY.prototype.rmask = [0xff, 0x0f, 0xff, 0x0f,
         0xff, 0x0f, 0x1f, 0xff,
@@ -106,6 +107,7 @@ AY.prototype.read = function(addr) {
 };
 
 
+/** @constructor */
 function AYWrapper(ay) {
     this.ay = ay;
     this.ayAccu = 0;

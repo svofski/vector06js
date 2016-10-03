@@ -7,6 +7,7 @@
 
 "use strict";
 
+/** @constructor */
 function Loader(url, callback, callback_error, callback_fdd, parent_id, container_id) {
     var str2ab = function(str) {
         var buf = new ArrayBuffer(str.length);
@@ -109,8 +110,10 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                         if (rawdata.length < 819200) {
                             fulldisk = new Uint8Array(819200);
                             var i;
-                            for (i = rawdata.length; --i >= 0; fulldisk[i] = rawdata[i]);
-                            for (i = fulldisk.length; --i >= rawdata.length; fulldisk[i] = 0xe5);
+                            for (i = rawdata.length; --i >= 0; fulldisk[i] = rawdata[i])
+                                {};
+                            for (i = fulldisk.length; --i >= rawdata.length; 
+                                fulldisk[i] = 0xe5) {};
                         }
                         return fulldisk;
                     }

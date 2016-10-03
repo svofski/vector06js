@@ -10,6 +10,7 @@
 
 "use strict";
 
+/** @constructor */
 function Soundnik(ay, timer) {
     this.aywrapper = new AYWrapper(ay);
     this.timerwrapper = new TimerWrapper(timer);
@@ -85,12 +86,15 @@ function Soundnik(ay, timer) {
         this.renderingBuffer = new Float32Array(this.renderingBufferSize);
     }
 
-
-    this.mute = function(m) {
-        if (this.gainNode) {
-            this.gainNode.gain.value = m ? 0 : 1;
-        }
-    };
+    // @this {Soundnik}
+    this.mute = 
+        (function(sndnik) {
+            return (function(m) {
+                if (sndnik.gainNode) {
+                    sndnik.gainNode.gain.value = m ? 0 : 1;
+                }
+            });
+        })(this);
 }
 
 Soundnik.prototype.sample = function(samp) {

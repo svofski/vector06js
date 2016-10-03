@@ -12,6 +12,7 @@
 //  WORD FAT[8];
 // };
 
+/** @constructor */
 function MDHeader() {
     this.User = 0;
     this.Name = "";
@@ -82,6 +83,7 @@ MDHeader.prototype.FromName = function(filename) {
     return this;
 }
 
+/** @constructor */
 function Dirent(fs) {
     this.FS = fs;
     this.Header = null;
@@ -118,15 +120,16 @@ Dirent.prototype.FromHeader = function(header) {
     return this;
 };
 
+/** @constructor */
 function Filesystem(size) {
     this.bytes = new Uint8Array(size);
-    for (var i = this.bytes.length; --i >= 0; this.bytes[i] = 0xe5);
+    for (var i = this.bytes.length; --i >= 0; this.bytes[i] = 0xe5) {};
 }
 
 Filesystem.prototype.FromArray = function(source) {
     if (this.bytes.length < source.length) {
         this.bytes = new Uint8Array(source.length);
-        for (var i = this.bytes.length; --i >= 0; this.bytes[i] = 0xe5);
+        for (var i = this.bytes.length; --i >= 0; this.bytes[i] = 0xe5) {};
     }
     for (var i = source.length; --i >= 0;) {
         this.bytes[i] = source[i];
@@ -350,7 +353,7 @@ function testFilesystem(fs) {
 
     console.log("Creating new file");
     var contents = new Uint8Array(54321);
-    for (var i = contents.length; --i >= 0; contents[i] = Math.random() * 255);
+    for (var i = contents.length; --i >= 0; contents[i] = Math.random() * 255) {};
     fs.saveFile("test.rnd", contents);
 
     console.log("List all files:")

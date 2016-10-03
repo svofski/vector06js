@@ -5,6 +5,7 @@
 
 "use strict";
 
+/** @constructor */
 function Keyboard() {
     this.matrix = new Uint8Array(8);
     this.ss = false;
