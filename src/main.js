@@ -52,7 +52,7 @@
     };
 
 
-    var url = "http://asdasd.rpg.fi/scalar//media/w/test.zip";
+    var url = "roms/testtp.rom";
 
     var chooserParent = "chooser-glass";
     var aboutParent = "about-panel";
