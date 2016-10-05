@@ -339,8 +339,8 @@ PixelFiller.prototype.reset = function() {
     this.irq = false;
 };
 
-PixelFiller.prototype.fetchPixels = function(column, row) {
-    const addr = ((column & 0xff) << 8) | (row & 0xff);
+PixelFiller.prototype.fetchPixels = function() {
+    const addr = ((this.fb_column & 0xff) << 8) | (this.fb_row & 0xff);
     this.pixel32 = this.mem32[0x2000 + addr];
 };
 
@@ -371,7 +371,7 @@ PixelFiller.prototype.fill = function(clocks,commit_time,commit_time_pal,updateS
             this.IO.commit_palette(index); // palette writes; test: bord2
         }
         if (this.visible) {
-            let bmp_x = this.raster_pixel - CENTER_OFFSET; // horizontal offset
+            const bmp_x = this.raster_pixel - CENTER_OFFSET; // horizontal offset
             if (bmp_x >= 0 && bmp_x < SCREEN_WIDTH) {
                 if (this.mode512 && !border) {
                     bmp[this.bmpofs++] = palette[index & 0x03];
@@ -425,8 +425,8 @@ PixelFiller.prototype.getColorIndex = function(rpixel, border) {
         return this.border_index;
     } else {
         if ((rpixel & 0x0f) === 0) {
-            this.fetchPixels(this.fb_column, this.fb_row);
-            this.fb_column += 1;
+            this.fetchPixels();
+            ++this.fb_column;
         }
         return this.shiftOutPixels();
     }
