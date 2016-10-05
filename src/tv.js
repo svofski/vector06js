@@ -312,6 +312,7 @@ function PixelFiller(bmp, palette, io, bytes) {
     this.palette = palette;
     this.IO = io;
     this.bytes = bytes;
+    this.mem32 = new Uint32Array(bytes.buffer);
     this.pixel32 = 0;  // 4 bytes of bit planes
     this.border_index = 0;
 
@@ -340,17 +341,15 @@ PixelFiller.prototype.reset = function() {
 
 PixelFiller.prototype.fetchPixels = function(column, row) {
     const addr = ((column & 0xff) << 8) | (row & 0xff);
-    const mem = this.bytes;
-    this.pixel32 = mem[0x8000 + addr] |
-        (mem[0xa000 + addr] << 8) |
-        (mem[0xc000 + addr] << 16) |
-        (mem[0xe000 + addr] << 24);
+    this.pixel32 = this.mem32[0x2000 + addr];
 };
 
 PixelFiller.prototype.shiftOutPixels = function() {
     const p = this.pixel32;
+    // msb of every byte in p stands for bit plane
     var modeless = (p >> 4 & 8) | (p >> 13 & 4) | (p >> 22 & 2) | (p >> 31 & 1);
-    this.pixel32 = (p << 1) & 0xfefefefe;
+    // shift left
+    this.pixel32 = (p << 1);// & 0xfefefefe; -- unnecessary
     return modeless;
 };
 
@@ -404,7 +403,8 @@ PixelFiller.prototype.fill = function(clocks,commit_time,commit_time_pal,updateS
 PixelFiller.prototype.advanceLine = function(updateScreen) {
     this.raster_pixel = 0;
     this.raster_line += 1;
-    if (!this.vborder && --this.fb_row < 0) {
+    this.fb_row -= 1;
+    if (!this.vborder && this.fb_row < 0) {
         this.fb_row = 0xff;
     }
     // update vertical border only when line changes

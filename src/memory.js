@@ -1,8 +1,11 @@
 "use strict";
 
-/** @this {Memory}
+/** @constructor
     @export */
 function Memory() {
+    // Memory is not linear to make pixel fetch one 32-bit access
+    // see Memory.tobank() and PixelFiller.fetchPixels()
+    // 0000,2000,4000,6000,0001,2001,... 
     this.bytes = new Uint8Array(65536 + 256 * 1024);
     this.bootbytes = undefined;
 
@@ -34,15 +37,23 @@ Memory.prototype.bigram_select = function(addr, stackrq) {
     return addr;
 };
 
+Memory.prototype.tobank = function(a) {
+    return (a&0x78000) | ((a<<2)&0x7ffc) | ((a>>13)&3 );
+};
+
+Memory.prototype.toflat = function(b) {
+    return (a&0x78000) | ((a&0x7ffc)>>2) | ((a&3)<<13);
+};
+
 Memory.prototype.read = function(addr, stackrq) {
     if (this.bootbytes && addr < this.bootbytes.length) {
         return this.bootbytes[addr];
     }
-    return this.bytes[this.bigram_select(addr & 0xffff, stackrq)];
+    return this.bytes[this.tobank(this.bigram_select(addr & 0xffff, stackrq))];
 };
 
 Memory.prototype.write = function(addr, w8, stackrq) {
-    this.bytes[this.bigram_select(addr & 0xffff, stackrq)] = w8;
+    this.bytes[this.tobank(this.bigram_select(addr & 0xffff, stackrq))] = w8;
 };
 
 Memory.prototype.init_from_array = function(array, start_addr) {
