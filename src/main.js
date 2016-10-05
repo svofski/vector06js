@@ -51,7 +51,6 @@
         frameskip.innerText = v06c.frameSkip + " " + miss;
     };
 
-
     var url = "roms/testtp.rom";
 
     var chooserParent = "chooser-glass";

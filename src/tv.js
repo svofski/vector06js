@@ -8,15 +8,13 @@
 var debug = false;
 var debug_str = "";
 
-/** @this {Vector06c} */
-function Vector06c(cpu, memory, io, ay) {
-    const SCREEN_WIDTH = 512 + 64;
-    const SCREEN_HEIGHT = 256 + 16 + 16; // total - raster area - borders
-    const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
-    const PIXELS_WIDTH = 512;
-    const PIXELS_HEIGHT = 256;
-    const CENTER_OFFSET = 120;
+const SCREEN_WIDTH = 512 + 64;
+const SCREEN_HEIGHT = 256 + 16 + 16;
+const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
+const CENTER_OFFSET = 120;
 
+/** @constructor */
+function Vector06c(cpu, memory, io, ay) {
     var pause_request = false;
     var onpause;
     var paused = true;
@@ -32,19 +30,21 @@ function Vector06c(cpu, memory, io, ay) {
     var w, h, buf8;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
-        if (this.bufferCanvas === undefined || SCREEN_WIDTH != w || SCREEN_HEIGHT != h) {
+        if (this.bufferCanvas === undefined || 
+            SCREEN_WIDTH != w || SCREEN_HEIGHT != h) {
             this.bufferCanvas = document.createElement("canvas");
             w = this.bufferCanvas.width = SCREEN_WIDTH;
             h = this.bufferCanvas.height = SCREEN_HEIGHT;
             this.bufferContext = this.bufferCanvas.getContext("2d");
             console.log("bufferContext=", this.bufferContext.canvas);
 
-            this.cvsDat = this.bufferContext.getImageData(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            //screenCanvas.width = bufferCanvas.width * 1.67;
+            this.cvsDat = this.bufferContext.getImageData(0, 0, 
+                SCREEN_WIDTH, SCREEN_HEIGHT);
             this.screenCanvas.width = this.bufferCanvas.width * 1; //1.67;
             this.screenCanvas.height = this.bufferCanvas.height * 1; //(2/1.67);
 
-            usingPackedBuffer = (typeof Uint8ClampedArray !== "undefined") && (this.cvsDat.data.buffer);
+            usingPackedBuffer = (typeof Uint8ClampedArray !== "undefined") && 
+                (this.cvsDat.data.buffer);
             if (usingPackedBuffer) {
                 console.debug("Using native packed graphics");
                 var bmp2 = this.cvsDat.data.buffer;
@@ -98,17 +98,7 @@ function Vector06c(cpu, memory, io, ay) {
     //
     this.irq = false;
 
-    this.pixels = new Uint8Array(4);
-
-    this.border_index_cached = 0;
     var self = this;
-    this.IO.onborderchange = function(border) {
-        self.border_index_cached = border;
-    };
-    this.mode512 = false;
-    this.IO.onmodechange = function(mode) {
-        self.mode512 = mode;
-    };
     this.tapeout = 0;
     this.IO.ontapeoutchange = function(tape) {
         self.tapeout = tape;
@@ -117,147 +107,6 @@ function Vector06c(cpu, memory, io, ay) {
     this.Palette = this.IO.Palette;
     this.between = 0;
     this.instr_time = 0;
-
-    this.oneInterrupt = function(mem, updateScreen) {
-        var raster_pixel = 0;
-        var raster_line = 0;
-        var fb_column = 0;
-        var fb_row = 0;
-
-        var index = 0;
-        var brk = false;
-        var bmpofs = 0;
-        var commit_time = -1;
-        var commit_time_pal = -1;
-
-        var vborder = true;
-        var visible = false;
-
-        this.between = 0;
-        for (; !brk;) {
-            commit_time = commit_time_pal = -1;
-
-            if (this.irq && this.CPU.iff) {
-                this.irq = false;
-                //this.between = 0;
-                // i8080js does not have halt mode, but loops on halt instruction
-                // if in halt, advance pc + 1 and sideload rst7 instruction
-                // this is a fairly close equivalent to what real 8080 is doing
-                if (this.CPU.last_opcode == 0x76) { // 0x76 == hlt
-                    this.CPU.pc += 1;
-                }
-                this.CPU.execute(0xf3); // di
-                this.CPU.execute(0xff); // 0xff == rst7
-                this.instr_time += 16; // execution time known
-                //debug_str = "";
-            }
-
-            this.CPU.instruction();
-            var dbg_op = this.CPU.last_opcode;
-            this.instr_time += this.CPU.vcycles;
-            if (dbg_op == 0xd3) {
-                commit_time = this.instr_time - 5;
-            }
-            if (commit_time != -1) {
-                commit_time = commit_time * 4 + 4;
-                commit_time_pal = commit_time - 20;
-            }
-
-            // fill pixels
-            var rpixel, border;
-            var i, end;
-            // create locals shorthands to busy arrays
-            const bmp = this.bmp;
-            const palette = this.Palette;
-            var mode512 = this.mode512;
-            for (i = 0, end = this.instr_time << 2; i < end && !brk; i += 2) {
-                // this offset is important for matching i/o writes 
-                // (border and palette) and raster
-                // test:bord2
-                rpixel = raster_pixel - 24;
-                border = vborder ||
-                    /* hborder */
-                    (rpixel < (768 - 512) / 2) || (rpixel >= (768 - (768 - 512) / 2));
-                if (border) {
-                    index = this.border_index_cached;
-                    fb_column = 0;
-                } else {
-                    if ((rpixel & 0x0f) === 0) {
-                        this.fetchPixels(fb_column, fb_row, mem);
-                        ++fb_column;
-                    }
-
-                    index = this.shiftOutPixels();
-                }
-
-                // commit regular i/o writes (e.g. border index)
-                // test: bord2
-                if (i === commit_time) {
-                    this.IO.commit();
-                    mode512 = this.mode512;
-                }
-                // commit i/o to palette ram
-                // test: bord2
-                if (i === commit_time_pal) {
-                    this.IO.commit_palette(index);
-                }
-                //if (updateScreen && (raster_line >= FIRST_VISIBLE_LINE)) {
-                if (visible) {
-                    var bmp_x = raster_pixel - CENTER_OFFSET; // picture horizontal offset
-                    if (bmp_x >= 0 && bmp_x < SCREEN_WIDTH) {
-                        if (mode512) {
-                            bmp[bmpofs++] = palette[border ? index : (index & 0x03)];
-                            bmp[bmpofs++] = palette[border ? index : (index & 0x0c)];
-                        } else {
-                            bmp[bmpofs++] = palette[index];
-                            bmp[bmpofs++] = palette[index];
-                        }
-                    }
-                }
-
-                // 22 vsync
-                // 18 border
-                // 256 picture
-                // 16 border
-                raster_pixel += 2;
-                if (raster_pixel === 768) {
-                    raster_pixel = 0;
-                    raster_line += 1;
-                    if (!vborder) {
-                        --fb_row;
-                        if (fb_row < 0) {
-                            fb_row = 0xff;
-                        }
-                    }
-                    // update vertical border only when line changes
-                    vborder = (raster_line < 40) || (raster_line >= (40 + 256));
-                    // turn on pixel copying after blanking area
-                    visible |= updateScreen && raster_line === FIRST_VISIBLE_LINE;
-                    if (raster_line === 312) {
-                        raster_line = 0;
-                        visible = false; // blanking starts
-                        brk = true;
-                    }
-                }
-                // load scroll register at this precise moment
-                // test:scrltst2
-                if (raster_line === 22 + 18 && raster_pixel === 150) {
-                    fb_row = this.IO.ScrollStart();
-                }
-                // irq time
-                // test:bord2
-                else if (raster_line === 0 && raster_pixel === 176 && this.CPU.iff) {
-                    this.irq = true;
-                }
-            }
-            var wrap = this.instr_time - (i >> 2);
-            var step = this.instr_time - wrap;
-            this.soundnik.soundStep(step, this.tapeout);
-
-            this.between += step;
-            this.instr_time = wrap;
-        }
-    };
 
     this.initCanvas = function() {
         this.screenCanvas = document.getElementById("canvas");
@@ -272,7 +121,6 @@ function Vector06c(cpu, memory, io, ay) {
     };
 
     var nextFrameTime = new Date().getTime();
-    //var bytes = this.Memory.bytes;
 
     const ACCELERATION_DELAY = 25;
     const THROTTLE_DELAY = 2;
@@ -283,9 +131,9 @@ function Vector06c(cpu, memory, io, ay) {
     this.oneFrame = function() {
         var frameRate = TARGET_FRAMERATE / (this.frameSkip + 1);
 
-        this.oneInterrupt(this.Memory.bytes, true);
+        this.oneInterrupt(true);
         for (var i = this.frameSkip; --i >= 0;) {
-            this.oneInterrupt(this.Memory.bytes, false);
+            this.oneInterrupt(false);
         }
 
         this.displayFrame();
@@ -335,13 +183,11 @@ function Vector06c(cpu, memory, io, ay) {
         }
     };
 
-
     this.updateDisplay = true;
     this.oneFrameDumbass = function() {
-        //var frameRate = this.frameSkip ? ACCELERATION_DELAY : 50;
         var frameRate = 50;
 
-        this.oneInterrupt(this.Memory.bytes, this.updateDisplay);
+        this.oneInterrupt(this.updateDisplay);
         if (this.updateDisplay) {
             this.displayFrame();
         }
@@ -407,23 +253,182 @@ function Vector06c(cpu, memory, io, ay) {
     };
 }
 
-Vector06c.prototype.fetchPixels = function(column, row, mem) {
-    var addr = ((column & 0xff) << 8) | (row & 0xff);
-    this.pixels[0] = mem[0x8000 + addr];
-    this.pixels[1] = mem[0xa000 + addr];
-    this.pixels[2] = mem[0xc000 + addr];
-    this.pixels[3] = mem[0xe000 + addr];
+// Must be called before this.CPU.instruction()
+Vector06c.prototype.checkInterrupt = function() {
+    if (this.irq && this.CPU.iff) {
+        this.irq = false;
+        //this.between = 0;
+        // i8080js does not have halt mode, but loops on halt instruction
+        // if in halt, advance pc + 1 and sideload rst7 instruction
+        // this is a fairly close equivalent to what real 8080 is doing
+        if (this.CPU.last_opcode == 0x76) { // 0x76 == hlt
+            this.CPU.pc += 1;
+        }
+        this.CPU.execute(0xf3); // di
+        this.CPU.execute(0xff); // 0xff == rst7
+        this.instr_time += 16; // execution time known
+    }
 };
 
-Vector06c.prototype.shiftOutPixels = function() {
-    var pixels = this.pixels;
-    var index_modeless = ((pixels[0] & 0x80) >> 4);
-    pixels[0] <<= 1;
-    index_modeless |= ((pixels[1] & 0x80) >> 5);
-    pixels[1] <<= 1;
-    index_modeless |= ((pixels[2] & 0x80) >> 6);
-    pixels[2] <<= 1;
-    index_modeless |= ((pixels[3] & 0x80) >> 7);
-    pixels[3] <<= 1;
-    return index_modeless;
+Vector06c.prototype.oneInterrupt = function(updateScreen) {
+    if (!this.filler) {
+        this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes);
+    }
+    this.filler.reset();
+
+    var commit_time = -1;       // i/o commit time adjust
+    var commit_time_pal = -1;   // palette commit time adjust
+    this.between = 0;           // cpu cycles counter per interrupt
+    for (; !this.filler.brk;) {
+        commit_time = commit_time_pal = -1;
+        this.checkInterrupt();
+        this.filler.irq = this.filler.irq && this.irq;
+        this.CPU.instruction();
+        var dbg_op = this.CPU.last_opcode;
+        this.instr_time += this.CPU.vcycles;
+        if (dbg_op == 0xd3) {   // out
+            commit_time = this.instr_time - 5;
+        }
+        if (commit_time != -1) {
+            commit_time = commit_time * 4 + 4;
+            commit_time_pal = commit_time - 20;
+        }
+
+        let clk = this.filler.fill(this.instr_time << 2, 
+            commit_time, commit_time_pal, updateScreen);
+        this.irq = this.CPU.iff && this.filler.irq;
+        let wrap = this.instr_time - (clk >> 2);
+        let step = this.instr_time - wrap;
+        this.soundnik.soundStep(step, this.tapeout);
+
+        this.between += step;
+        this.instr_time = wrap;
+    }
 };
+
+/** @constructor */
+function PixelFiller(bmp, palette, io, bytes) {
+    this.bmp = bmp;
+    this.palette = palette;
+    this.IO = io;
+    this.bytes = bytes;
+    this.pixel32 = 0;  // 4 bytes of bit planes
+    this.border_index = 0;
+
+    this.reset();
+    var self = this;
+    this.IO.onborderchange = function(border) {
+        self.border_index = border;
+    };
+    this.mode512 = false;
+    this.IO.onmodechange = function(mode) {
+        self.mode512 = mode;
+    };
+}
+
+PixelFiller.prototype.reset = function() {
+    this.raster_pixel = 0;   // horizontal pixel counter
+    this.raster_line = 0;    // raster line counter
+    this.fb_column = 0;      // frame buffer column
+    this.fb_row = 0;         // frame buffer row
+    this.vborder = true;     // vertical border flag
+    this.visible = false;    // visible area flag
+    this.bmpofs = 0;         // bitmap offset for current pixel
+    this.brk = false;
+    this.irq = false;
+};
+
+PixelFiller.prototype.fetchPixels = function(column, row) {
+    const addr = ((column & 0xff) << 8) | (row & 0xff);
+    const mem = this.bytes;
+    this.pixel32 = mem[0x8000 + addr] |
+        (mem[0xa000 + addr] << 8) |
+        (mem[0xc000 + addr] << 16) |
+        (mem[0xe000 + addr] << 24);
+};
+
+PixelFiller.prototype.shiftOutPixels = function() {
+    const p = this.pixel32;
+    var modeless = (p >> 4 & 8) | (p >> 13 & 4) | (p >> 22 & 2) | (p >> 31 & 1);
+    this.pixel32 = (p << 1) & 0xfefefefe;
+    return modeless;
+};
+
+PixelFiller.prototype.fill = function(clocks,commit_time,commit_time_pal,updateScreen) {
+    const bmp = this.bmp;
+    const palette = this.palette;
+    var clk;
+    for (clk = 0; clk < clocks && !this.brk; clk += 2) {
+        // offset for matching border/palette writes and the raster -- test:bord2
+        const rpixel = this.raster_pixel - 24;
+        const border = this.vborder || 
+            /* hborder */ (rpixel < (768-512)/2) || (rpixel >= (768 - (768-512)/2));
+        const index = this.getColorIndex(rpixel, border);
+
+        if (clk === commit_time) {
+            this.IO.commit(); // regular i/o writes (border index); test: bord2
+        }
+        if (clk === commit_time_pal) {
+            this.IO.commit_palette(index); // palette writes; test: bord2
+        }
+        if (this.visible) {
+            let bmp_x = this.raster_pixel - CENTER_OFFSET; // horizontal offset
+            if (bmp_x >= 0 && bmp_x < SCREEN_WIDTH) {
+                if (this.mode512 && !border) {
+                    bmp[this.bmpofs++] = palette[index & 0x03];
+                    bmp[this.bmpofs++] = palette[index & 0x0c];
+                } else {
+                    let p = palette[index];
+                    bmp[this.bmpofs++] = p;
+                    bmp[this.bmpofs++] = p;
+                }
+            }
+        }
+        // 22 vsync + 18 border + 256 picture + 16 border = 312 lines
+        this.raster_pixel += 2;
+        if (this.raster_pixel === 768) {
+            this.advanceLine(updateScreen);
+        }
+        // load scroll register at this precise moment -- test:scrltst2
+        if (this.raster_line === 22 + 18 && this.raster_pixel === 150) {
+            this.fb_row = this.IO.ScrollStart();
+        }
+        // irq time -- test:bord2
+        else if (this.raster_line === 0 && this.raster_pixel === 176) {
+            this.irq = true;
+        }
+    } 
+    return clk;
+};
+
+PixelFiller.prototype.advanceLine = function(updateScreen) {
+    this.raster_pixel = 0;
+    this.raster_line += 1;
+    if (!this.vborder && --this.fb_row < 0) {
+        this.fb_row = 0xff;
+    }
+    // update vertical border only when line changes
+    this.vborder = (this.raster_line < 40) || (this.raster_line >= (40 + 256));
+    // turn on pixel copying after blanking area
+    this.visible = this.visible || 
+        (updateScreen && this.raster_line === FIRST_VISIBLE_LINE);
+    if (this.raster_line === 312) {
+        this.raster_line = 0;
+        this.visible = false; // blanking starts
+        this.brk = true;
+    }
+};
+
+PixelFiller.prototype.getColorIndex = function(rpixel, border) {
+    if (border) {
+        this.fb_column = 0;
+        return this.border_index;
+    } else {
+        if ((rpixel & 0x0f) === 0) {
+            this.fetchPixels(this.fb_column, this.fb_row);
+            this.fb_column += 1;
+        }
+        return this.shiftOutPixels();
+    }
+};
+
