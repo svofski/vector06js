@@ -81,7 +81,7 @@ Memory.prototype.dump = function() {
     var s = "";
     var addr = 0;
     for (var i = 0; i < 8192;) {
-        s += this.bytes[i].toString(16) + " ";
+        s += this.read(i).toString(16) + " ";
         ++i;
         if (i % 16 === 0) {
             console.log(addr.toString(16) + "  " + s);

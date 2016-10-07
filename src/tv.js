@@ -36,7 +36,7 @@ function Vector06c(cpu, memory, io, ay) {
             w = this.bufferCanvas.width = SCREEN_WIDTH;
             h = this.bufferCanvas.height = SCREEN_HEIGHT;
             this.bufferContext = this.bufferCanvas.getContext("2d");
-            console.log("bufferContext=", this.bufferContext.canvas);
+            //console.log("bufferContext=", this.bufferContext.canvas);
 
             this.cvsDat = this.bufferContext.getImageData(0, 0, 
                 SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -117,7 +117,6 @@ function Vector06c(cpu, memory, io, ay) {
         this.screenContext = this.screenCanvas.getContext("2d");
         this.bufferCanvas = undefined;
         if (this.displayFrame) this.displayFrame();
-        console.log("initCanvas: screnCanvas=", this.screenCanvas);
     };
 
     var nextFrameTime = new Date().getTime();
@@ -137,7 +136,6 @@ function Vector06c(cpu, memory, io, ay) {
         }
 
         this.displayFrame();
-
         var timeWaitUntilNextFrame = nextFrameTime - new Date().getTime();
         if (timeWaitUntilNextFrame < 0) {
             if (this.frameSkip < 8) {
@@ -197,7 +195,6 @@ function Vector06c(cpu, memory, io, ay) {
             timeWaitUntilNextFrame = 0;
             nextFrameTime = new Date().getTime() + (1000 / frameRate);
             this.updateDisplay = false;
-            console.log("feck");
         } else {
             nextFrameTime += (1000 / frameRate);
             this.updateDisplay = true;
@@ -217,6 +214,32 @@ function Vector06c(cpu, memory, io, ay) {
         }
     };
 
+    this.oneFrameTest = function() {
+        for(var frameno = 0; !paused; frameno++) {
+            this.oneInterrupt(true);
+            this.displayFrame();
+            
+            /*
+            var sss = "";
+            for (var i = 0; i < 64; i++) {
+                sss += this.bmp[i].toString(16) + " ";
+            }
+            console.log("oneFrame bmp: " + sss);
+            */
+            if (this.ondisplay) {
+                this.ondisplay();
+            }
+
+            if (pause_request) {
+                pause_request = false;
+                paused = true;
+                if (onpause) {
+                    onpause();
+                    onpause = undefined;
+                }
+            } 
+        }
+    };
 
     this.initCanvas();
 
