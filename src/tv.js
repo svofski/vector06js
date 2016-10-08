@@ -20,6 +20,7 @@ function Vector06c(cpu, memory, io, ay) {
     var paused = true;
 
     this.frameSkip = 0;
+    this.frameCount = 0;
 
     this.Memory = memory;
     this.CPU = cpu;
@@ -128,6 +129,7 @@ function Vector06c(cpu, memory, io, ay) {
     this.throttleDelay = THROTTLE_DELAY;
     const TARGET_FRAMERATE = 50;
     this.oneFrame = function() {
+        ++this.frameCount;
         var frameRate = TARGET_FRAMERATE / (this.frameSkip + 1);
 
         this.oneInterrupt(true);
@@ -219,13 +221,6 @@ function Vector06c(cpu, memory, io, ay) {
             this.oneInterrupt(true);
             this.displayFrame();
             
-            /*
-            var sss = "";
-            for (var i = 0; i < 64; i++) {
-                sss += this.bmp[i].toString(16) + " ";
-            }
-            console.log("oneFrame bmp: " + sss);
-            */
             if (this.ondisplay) {
                 this.ondisplay();
             }

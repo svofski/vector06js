@@ -25,6 +25,11 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     this.outport = undefined;
     this.outbyte = undefined;
     this.palettebyte = undefined;
+    
+    // make sure that palette has alpha=255
+    for (var i = 0; i < 16; i++) {
+        this.Palette[i] = 0xff000000;
+    }
 }
 
 IO.prototype.input = function(port) {
@@ -103,18 +108,8 @@ IO.prototype.input = function(port) {
 };
 
 IO.prototype.output = function(port, w8) {
-    switch (port) {
-        case 0x08:
-        case 0x09:
-        case 0x0a:
-        case 0x0b:
-            this.Timer.Write((~port & 3), w8);
-            break;
-        default:
-            this.outport = port;
-            this.outbyte = w8;
-            break;
-    }
+    this.outport = port;
+    this.outbyte = w8;
 };
 
 IO.prototype.realoutput = function(port, w8) {
@@ -175,13 +170,14 @@ IO.prototype.realoutput = function(port, w8) {
         case 0x07:
             this.PA2 = w8;
             break;
+
             // Timer
-            // case 0x08:
-            // case 0x09:
-            // case 0x0a:
-            // case 0x0b:
-            //     this.Timer.Write((~port & 3), w8);
-            //     break;
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+            this.Timer.Write((~port & 3), w8);
+            break;
 
         case 0x0c:
         case 0x0d:

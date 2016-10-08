@@ -16,24 +16,26 @@ function CounterUnit() {
     this.loadvalue = undefined;
     this.load = false;
     this.enabled = false;
-    this.borrow = 0;
+    this.read_period = 0;
+    this.delay = 0;
 
     this.SetMode(0);
 }
 
-const WRITE_DELAY = 8;
-const LATCH_DELAY = 6;
+const WRITE_DELAY = 2;//2;//8;
+const LATCH_DELAY = 1;
 const READ_DELAY = 0;
 
 CounterUnit.prototype.Latch = function(w8) {
     this.Count(LATCH_DELAY);
-    this.borrow = LATCH_DELAY;
+    this.delay = LATCH_DELAY;
     this.latch_value = this.value;
 };
 
 CounterUnit.prototype.SetMode = function(new_mode, new_latch_mode) {
-    this.Count(WRITE_DELAY);
-    this.borrow = WRITE_DELAY;
+    //this.Count(WRITE_DELAY);
+    this.Count(LATCH_DELAY);
+    this.delay = LATCH_DELAY;
 
     if ((new_mode & 0x04) == 2) {
         this.mode_int = 2;
@@ -70,9 +72,6 @@ CounterUnit.prototype.SetMode = function(new_mode, new_latch_mode) {
 };
 
 CounterUnit.prototype.write_value = function(w8) {
-    this.Count(WRITE_DELAY);
-    this.borrow = WRITE_DELAY;
-
     if (this.latch_mode == 3) {
         // lsb, msb             
         switch (this.write_state) {
@@ -83,7 +82,8 @@ CounterUnit.prototype.write_value = function(w8) {
             case 1:
                 this.write_msb = w8;
                 this.write_state = 0;
-                this.loadvalue = ((this.write_msb << 8) & 0xffff) | (this.write_lsb & 0xff);
+                this.loadvalue = ((this.write_msb << 8) & 0xffff) | 
+                    (this.write_lsb & 0xff);
                 this.load = true;
                 break;
             default:
@@ -102,11 +102,34 @@ CounterUnit.prototype.write_value = function(w8) {
         this.loadvalue = this.value;
         this.load = true;
     }
+    //
+    if (this.load) {
+        switch (this.mode_int) {
+        case 0:
+            this.delay = 3; break; // 4 makes chkvi53 happy, 3 makes 8253 happy
+        case 1:
+            if (!this.enabled) {
+                this.delay = 3; // 82532: 3, 82531: 3, 8253: 4  
+            } 
+            break;
+        case 2:
+            if (!this.enabled) {
+                this.delay = 3; 
+            }
+            break;
+        case 3:
+            if (!this.enabled) {
+                this.delay = 3; 
+            }
+            break;
+        default:
+            this.delay = 4; break;
+        }
+    }
 };
 
 CounterUnit.prototype.read_value = function() {
-    this.Count(READ_DELAY);
-    this.borrow = READ_DELAY;
+    this.read_period = 0;
     var value;
     switch (this.latch_mode) {
     case 0:
@@ -140,27 +163,28 @@ CounterUnit.prototype.read_value = function() {
     return 0; // impossible
 };
 
-CounterUnit.prototype.Count = function(cycles) {
-    if (this.borrow !== 0) {
-        cycles -= this.borrow;
-        if (cycles < 0) {
-            this.borrow = -cycles;
-            return this.out;
-        } else {
-            this.borrow = 0;
-        }
+CounterUnit.prototype.Count = function(incycles) {
+    this.read_period += incycles;
+    var cycles = incycles;
+    while (this.delay && cycles) {
+        --this.delay;
+        --cycles;
     }
-    switch (this.mode_int) {
+    if (!cycles) return;
+
+     switch (this.mode_int) {
         case 0: // Interrupt on terminal count
             if (this.load) {
                 this.value = this.loadvalue;
                 this.enabled = true;
+                this.armed = true;
                 this.load = false;
+                this.out = 0;
             }
             if (this.enabled) {
                 this.value -= cycles;
                 if (this.value <= 0) {
-                    this.value += 65535;
+                    this.value += 65536;
                     if (this.armed) {
                         this.out = 1;
                         this.armed = false;
@@ -170,15 +194,15 @@ CounterUnit.prototype.Count = function(cycles) {
             break;
         case 1: // Programmable one-shot
             if (!this.enabled && this.load) {
-                //this.value = this.loadvalue; — quirk!
+                //this.value = this.loadvalue; -- quirk!
                 this.enabled = true;
-                cycles -= 3;
             }
             this.load = false;
             if (this.enabled && cycles > 0) {
                 this.value -= cycles;
                 if (this.value <= 0) {
-                    this.value += this.loadvalue;
+                    this.value += this.loadvalue + 1;
+                    //this.value += this.loadvalue;
                 }
             }
 
@@ -202,24 +226,17 @@ CounterUnit.prototype.Count = function(cycles) {
             if (!this.enabled && this.load) {
                 this.value = this.loadvalue;
                 this.enabled = true;
-
-                // odd adjust immediately to make the main loop tighter
-                if ((this.value & 1) == 1) {
-                    this.value -= this.out === 0 ? 3 : 1;
-                    --cycles;
-                }
             }
             this.load = false;
-            if (this.enabled) {
-                if ((this.value -= cycles << 1) <= 0) {
-                    this.value += this.loadvalue;
-                    this.out ^= 1;
-                    // odd adjust immediately to make the main loop tighter
-                    if ((this.value & 1) == 1) {
-                        this.value -= this.out === 0 ? 3 : 1;
-                        this.borrow = 1;
+            if (this.enabled && cycles > 0) {
+                for (;--cycles >= 0;) {
+                    this.value -= 
+                        (this.value == this.loadvalue && (this.value&1 == 1)) ? 
+                            this.out === 0 ? 3 : 1 : 2; 
+                    if (this.value == 0) {
+                        this.value = this.loadvalue;
+                        this.out ^= 1;
                     }
-
                 }
             }
             break;
@@ -257,6 +274,7 @@ I8253.prototype.write_cw = function(w8) {
 };
 
 I8253.prototype.Write = function(addr, w8) {
+    console.log("8253 write " + addr + " = " + w8.toString(16));
     switch (addr & 3) {
         case 0x03:
             return this.write_cw(w8);
@@ -270,7 +288,10 @@ I8253.prototype.Read = function(addr) {
         case 0x03:
             return this.control_word;
         default:
-            return this.counters[addr & 3].read_value();
+            var v = this.counters[addr & 3].read_value();
+            console.log("8253 read " + addr + " = " + v.toString(16));
+            return v;
+            //return this.counters[addr & 3].read_value();
     }
 };
 

@@ -11,24 +11,24 @@ var async = require('async');
 var toCompare = [];
 
 Canvas.prototype.saveState = function(filename, callback_done) {
-        if (!filename) {
-            filename = 'state.png';
-        }
-        var out = fs.createWriteStream(__dirname + '/' + filename);
-        var stream = this.pngStream();
+    if (!filename) {
+        filename = 'state.png';
+    }
+    var out = fs.createWriteStream(__dirname + '/' + filename);
+    var stream = this.pngStream();
 
-        stream.on('data', function(chunk){
-            out.write(chunk);//, null, callback_done);
-        });
-        stream.on('end', function() { 
-            out.end();
-        });
-        out.on('finish', function() {
-            if (callback_done) {
-                callback_done();
-            }
-        });
-    };
+    stream.on('data', function(chunk){
+        out.write(chunk);
+    });
+    stream.on('end', function() { 
+        out.end();
+    });
+    out.on('finish', function() {
+        if (callback_done) {
+            callback_done();
+        }
+    });
+};
 
 var newCanvas = function() {
     var c = new Canvas(600,384);
@@ -49,9 +49,9 @@ document.createElement = function(name) {
     }
 };
 
-function TestCase(boot, testrom, endframe) {
+function TestCase(boot, testrom, endframe, kolbax) {
     var framecount = 0;
-    var endFrame = endframe === undefined ? 42 : endframe;
+    var endFrame = kolbax ? -1 : endframe === undefined ? 42 : endframe;
 
     this.testrom = testrom;
 
@@ -67,65 +67,59 @@ function TestCase(boot, testrom, endframe) {
         var fd1793 = Floppy().FD1793;
         var floppy = new fd1793();
         var io = new IO(keyboard2, timer, memory, ay, floppy);
+        io.Palette = [4286578688, 4286578688, 4278231200, 4278231200, 
+                      4286578688, 4286578688, 4278231200, 4278231200, 
+                      4286578688, 4286578688, 4278231200, 4278231200, 
+                      4286578688, 4286578688, 4278231200, 4278231200];
         var cpu = new I8080(memory, io);
         var v06c = new Vector06c(cpu, memory, io, ay);
         v06c.oneFrame = v06c.oneFrameTest;
 
         v06c.ondisplay = function() {
-            if (++framecount == endFrame) {
-                var name = 'out/' + testrom + '.png';
-                console.log('Saving frame to ' + name);
+            ++framecount;
+            var save = kolbax ? kolbax(v06c, framecount) :
+                {'name': testrom,
+                 'save': framecount === endFrame,
+                 'end' : framecount === endFrame};
+            if (save.save) {
+                var filename = 'out/' + save.name + '.png';
+                console.log('Saving frame ' + framecount + ' to ' + filename);
                 v06c.pause(function() {
-                    v06c.bufferCanvas.saveState(name,
+                    v06c.bufferCanvas.saveState(filename,
                         // callback_done
                         function() {
-                            console.log('TESTCASE END: ' + testrom);
-                            toCompare.push({'test':testrom, 'path':name});
-                            if (that.next) {
-                                that.next.go();
+                            toCompare.push({'test':save.name, 'path':filename});
+                            if (save.end) {
+                                console.log('TESTCASE END: ' + testrom);
+                                if (that.next) {
+                                    that.next.go();
+                                } else {
+                                    console.log("END OF LINE");
+                                }
                             } else {
-                                console.log("END OF LINE");
+                                setTimeout(function(){v06c.resume();}, 0);
                             }
-                        },
-                        // callback_compare
-                        function() {
-                        }
-                        );
+                        });
                 });
             }
         };
      
-        if (boot) {
-            (function() {
-                fs.open('../boot/boots.bin', 'r', function(status, fd) {
-                    if (status) {
-                        console.log(status.message);
-                        return;
-                    }
-                    var buffer = new Buffer(2048);
-                    fs.read(fd, buffer, 0, 2048, 0, function(err,num) {
-                        console.log("Read " + num + " bytes");
-                        memory.attach_boot(buffer);
-                        v06c.BlkSbr(true);
-                    });
+        (function(testname) {
+            romfile = boot ? '../boot/boots.bin' : '../testroms/' + testname;
+            fs.open(romfile, 'r', function(status, fd) {
+                if (status) {
+                    console.log(status.message);
+                    return;
+                }
+                var buffer = new Buffer(65536);
+                fs.read(fd, buffer, 0, 65536, 0, function(err,num) {
+                    console.log("Read " + num + " bytes");
+                    boot ? memory.attach_boot(buffer.slice(0, num)) :
+                           memory.init_from_array(buffer.slice(0, num), 256);
+                    v06c.BlkSbr(boot);
                 });
-            })();
-        } else {
-            var test = (function(testname) {
-                fs.open('../testroms/' + testname, 'r', function(status, fd) {
-                    if (status) {
-                        console.log(status.message);
-                        return;
-                    }
-                    var buffer = new Buffer(65536);
-                    fs.read(fd, buffer, 0, 2048, 0, function(err,num) {
-                        console.log("Read " + num + " bytes from " + testname);
-                        memory.init_from_array(buffer.slice(0, num), 256);
-                        v06c.BlkSbr(false);
-                    });
-                });
-            })(testrom);
-        }
+            });
+        })(testrom);
     };
    
     this.then = function(next) {
@@ -199,9 +193,33 @@ function Dummy() {
 }
 
 var chain = new TestCase(true, 'boot');
-    chain.then( new TestCase(false, 'bord2.rom')).then(
-                new TestCase(false, 'testtp.rom', 1800)).then(
-                new Dummy());
-    chain.go();
+chain.then( 
+    new TestCase(false, 'bord2.rom')).then(
+//    new TestCase(false, 'cpuspeed.rom', 60)).then(
+//    new TestCase(false, 'cpu_spd.rom', 60)).then(
+    new TestCase(false, 'i8253.rom', 60)).then(
+    new TestCase(false, 'i82531.rom', 60)).then(
+    new TestCase(false, 'i82532.rom', 60)).then(
+    new TestCase(false, 'tst8253.rom', 60)).then(
+//    new TestCase(false, 'testtp.rom', 1600)).then(
+//    new TestCase(false, 'vst.rom', 1800)).then(
+    new TestCase(false, 'scrltst2.rom', 0,
+        function(v, frame) {
+            var res = {'name': 'scrltst2_' + frame,
+                       'save': //frame >= 40,
+                               frame === 40 ||
+                               frame === 98 ||
+                               frame === 101 ||
+                               frame === 110 ||
+                               frame === 113,
+                       'end' : frame === 113};
+            var kbd = v.IO.keyboard;
+            if (frame == 40)
+                kbd.applyKey(17, false);
+            return res;
+        }
+    )).then(
+    new Dummy());
+chain.go();
 
 
