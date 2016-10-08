@@ -198,9 +198,11 @@ chain.then(
 //    new TestCase(false, 'cpuspeed.rom', 60)).then(
 //    new TestCase(false, 'cpu_spd.rom', 60)).then(
     new TestCase(false, 'i8253.rom', 60)).then(
+    new TestCase(false, 'i8253_bcd.rom', 60)).then(
     new TestCase(false, 'i82531.rom', 60)).then(
     new TestCase(false, 'i82532.rom', 60)).then(
     new TestCase(false, 'tst8253.rom', 60)).then(
+    new TestCase(false, 'chkvi53.rom', 60)).then(
 //    new TestCase(false, 'testtp.rom', 1600)).then(
 //    new TestCase(false, 'vst.rom', 1800)).then(
     new TestCase(false, 'scrltst2.rom', 0,
