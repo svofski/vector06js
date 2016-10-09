@@ -4,6 +4,7 @@ var test_31_x = function(n, steps, exp) {
     cu.SetMode(3, 1);
     cu.write_value(n);
     cu.Count(WRITE_DELAY);
+    cu.Count(LATCH_DELAY);
     var res = ""; 
     for (var i in steps) {
         res += cu.read_value().toString(16) + " ";
@@ -26,3 +27,4 @@ test_31_x(5, [2,2,2,2,2,2,2,2,2,2], "5 2 2 4 5 5 2 2 4 5");
 var steps = [];
 for(var i = 0; i < 20; i++) { steps[i] = 8; };
 test_31_x(9, steps, "9 2 4 6 9 2 4 6 8 9 2 4 6 9 2 4 6 8 9 2");
+

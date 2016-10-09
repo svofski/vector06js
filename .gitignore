@@ -8,3 +8,4 @@ test/out/
 test/out/*
 test/all-*.js
 test/all.js
+test/results.txt

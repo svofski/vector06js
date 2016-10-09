@@ -1,7 +1,9 @@
-console.log("HELLO");
 console.debug = function(x) {
     console.log(x);
 };
+
+console.log("VECTOR06JS FULLSCREEN TEST SUITE");
+console.log("Test sequence:");
 
 var Canvas = require('canvas');
 var fs = require('fs');
@@ -203,7 +205,7 @@ chain.then(
     new TestCase(false, 'i82532.rom', 60)).then(
     new TestCase(false, 'tst8253.rom', 60)).then(
     new TestCase(false, 'chkvi53.rom', 60)).then(
-//    new TestCase(false, 'testtp.rom', 1600)).then(
+    new TestCase(false, 'testtp.rom', 1600)).then(
 //    new TestCase(false, 'vst.rom', 1800)).then(
     new TestCase(false, 'scrltst2.rom', 0,
         function(v, frame) {
