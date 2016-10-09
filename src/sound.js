@@ -112,7 +112,7 @@ Soundnik.prototype.soundStep = function(step, tapeout) {
         var sound =
             1.0 * this.timerwrapper.unload() +
             this.aywrapper.unload() +
-            tapeout +
+            0.1 * tapeout - 0.05 +
             Math.random() * 0.005;
 
         this.sample(sound - 0.5);

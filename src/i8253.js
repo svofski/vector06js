@@ -93,28 +93,30 @@ CounterUnit.prototype.write_value = function(w8) {
         }
     } else if (this.latch_mode == 1) {
         // lsb only
-        this.value = (this.value & 0xff00) | w8;
+        //this.value = (this.value & 0xff00) | w8;
+        this.value = w8;
         this.value &= 0xffff;
         this.loadvalue = this.value;
         this.load = true;
     } else if (this.latch_mode == 2) {
         // msb only 
-        this.value = (this.value & 0x00ff) | (w8 << 8);
+        //this.value = (this.value & 0x00ff) | (w8 << 8);
+        this.value = w8 << 8;
         this.value &= 0xffff;
         this.loadvalue = this.value;
         this.load = true;
     }
-    //
     if (this.load) {
         if (this.bcd) {
             this.loadvalue = Number(this.loadvalue.toString(16));
         }
+        // I'm deeply sorry about the following part
         switch (this.mode_int) {
         case 0:
-            this.delay = 3; break; // 4 makes chkvi53 happy, 3 makes 8253 happy
+            this.delay = 3; break; 
         case 1:
             if (!this.enabled) {
-                this.delay = 3; // 82532: 3, 82531: 3, 8253: 4  
+                this.delay = 3; 
             } 
             break;
         case 2:
@@ -182,11 +184,14 @@ CounterUnit.prototype.read_value = function() {
 CounterUnit.prototype.Count = function(incycles) {
     this.read_period += incycles;
     var cycles = incycles;
+    var delay1 = this.delay;
     while (this.delay && cycles) {
         --this.delay;
         --cycles;
     }
     if (!cycles) return;
+
+    var scale = cycles;
 
      switch (this.mode_int) {
         case 0: // Interrupt on terminal count
@@ -195,16 +200,23 @@ CounterUnit.prototype.Count = function(incycles) {
                 this.enabled = true;
                 this.armed = true;
                 this.load = false;
-                this.out = 0;
+
+                if (this.out == 1) {
+                    this.out = 0;
+                    this.value -= cycles;
+                    return delay1; // keep the original "1" for delay time
+                } 
+                this.out = 0; 
             }
             if (this.enabled) {
                 this.value -= cycles;
                 if (this.value <= 0) {
-                    this.value += this.bcd ? 10000 : 65536;
                     if (this.armed) {
                         this.out = 1;
+                        scale = -this.value + 1;
                         this.armed = false;
                     }
+                    this.value += this.bcd ? 10000 : 65536;
                 }
             }
             break;
@@ -273,7 +285,8 @@ CounterUnit.prototype.Count = function(incycles) {
             break;
     }
 
-    return this.out;
+    //return this.out * cycles;//this.out * incycles;
+    return this.out * scale;
 };
 
 /** @constructor */
@@ -334,12 +347,12 @@ function TimerWrapper(timer) {
 }
 
 TimerWrapper.prototype.step = function(cycles) {
-    this.sound += this.timer.Count(cycles);
-    this.average_count += 8; // so that it's not too loud
+    this.sound += this.timer.Count(cycles) * 0.3;
+    this.average_count += cycles;
 };
 
 TimerWrapper.prototype.unload = function() {
-    var result = this.sound / this.average_count;
+    var result = this.sound / this.average_count - 0.15;
     this.sound = this.average_count = 0;
     return result;
 };
