@@ -112,6 +112,19 @@ function AYWrapper(ay) {
     this.ay = ay;
     this.ayAccu = 0;
     this.instr_accu = 0;
+    this.last = 0;
+}
+
+AYWrapper.prototype.step2 = function(instr_time) {
+    this.ayAccu += 7 * instr_time;
+    var aysamp = 0,
+        avg = 0;
+    for (; this.ayAccu >= 96; this.ayAccu -= 96) {
+        aysamp += this.ay.step();
+        avg += 1;
+    }
+    this.last = avg > 0 ? aysamp/avg : this.last;
+    return this.last;
 }
 
 AYWrapper.prototype.step = function(instr_time) {

@@ -344,15 +344,40 @@ function TimerWrapper(timer) {
     this.timer = timer;
     this.sound = 0;
     this.average_count = 0;
+    this.last_sound = 0;
+    // Cascade biquad of 4th order: Q1=0.54 Q2=1.31
+    // http://www.earlevel.com/main/2016/09/29/cascading-filters/
+    // http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
+    // Sample rate 1.5e6, Fc=9500
+    this.filter = new Filter(
+        0.0003817657919193142,
+        0.0007635315838386284,
+        0.0003817657919193142,
+        -1.9274180891347181,
+        0.9289451523023953
+    );
+    this.filter2 = new Filter(
+        0.0003898632033061222,
+        0.0007797264066122444,
+        0.0003898632033061222,
+        -1.9682994292454574,
+        0.9698588820586818
+    );
 }
 
 TimerWrapper.prototype.step = function(cycles) {
-    this.sound += this.timer.Count(cycles) * 0.3;
-    this.average_count += cycles;
+    this.last_sound = this.timer.Count(cycles) / cycles;
+//    this.sound += this.last_sound;
+//    this.average_count += cycles;
+
+//    for (var q = cycles; --q >= 0;) {
+//        this.last_sound = this.filter2.filter(this.filter.filter(this.last_sound));
+//    }
+    return this.last_sound;
 };
 
 TimerWrapper.prototype.unload = function() {
-    var result = this.sound / this.average_count - 0.15;
+    var result = this.sound / this.average_count;
     this.sound = this.average_count = 0;
-    return result;
+    return result - 1.5;
 };
