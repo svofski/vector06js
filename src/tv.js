@@ -28,6 +28,9 @@ function Vector06c(cpu, memory, io, ay) {
 
     this.soundnik = new Soundnik(ay, this.IO.Timer);
 
+    this.commit_time = -1;
+    this.commit_time_pal = -1;
+
     var w, h, buf8;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
@@ -290,46 +293,47 @@ Vector06c.prototype.checkInterrupt = function() {
 
 Vector06c.prototype.oneInterrupt = function(updateScreen) {
     if (!this.filler) {
-        this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes);
+        this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes,
+            this.soundnik);
     }
     this.filler.reset();
 
-    var commit_time = -1;       // i/o commit time adjust
-    var commit_time_pal = -1;   // palette commit time adjust
     this.between = 0;           // cpu cycles counter per interrupt
     for (; !this.filler.brk;) {
-        commit_time = commit_time_pal = -1;
         this.checkInterrupt();
         this.filler.irq = this.filler.irq && this.irq;
         this.CPU.instruction();
         var dbg_op = this.CPU.last_opcode;
         this.instr_time += this.CPU.vcycles;
         if (dbg_op == 0xd3) {   // out
-            commit_time = this.instr_time - 5;
-        }
-        if (commit_time != -1) {
-            commit_time = commit_time * 4 + 4;
-            commit_time_pal = commit_time - 20;
+            this.commit_time = this.instr_time - 5;
+            this.commit_time = this.commit_time * 4 + 4;
+            this.commit_time_pal = this.commit_time - 20;
         }
 
         let clk = this.filler.fill(this.instr_time << 2, 
-            commit_time, commit_time_pal, updateScreen);
+            this.commit_time, this.commit_time_pal, updateScreen);
         this.irq = this.CPU.iff && this.filler.irq;
         let wrap = this.instr_time - (clk >> 2);
         let step = this.instr_time - wrap;
-        this.soundnik.soundStep(step, this.tapeout);
+        for (let g = step/2; --g >= 0;) {
+            this.soundnik.soundStep(2, this.tapeout, this.IO.PA2);
+        }
 
         this.between += step;
         this.instr_time = wrap;
+        this.commit_time -= clk;
+        this.commit_time_pal -= clk;
     }
 };
 
 /** @constructor */
-function PixelFiller(bmp, palette, io, bytes) {
+function PixelFiller(bmp, palette, io, bytes, son) {
     this.bmp = bmp;
     this.palette = palette;
     this.IO = io;
     this.bytes = bytes;
+    this.son = son;
     this.mem32 = new Uint32Array(bytes.buffer);
     this.pixel32 = 0;  // 4 bytes of bit planes
     this.border_index = 0;

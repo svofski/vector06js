@@ -11,19 +11,24 @@
 "use strict";
 
 /** @constructor */
-function Filter(a0, a1, a2, b1, b2) {
-    this.a0 = a0;
-    this.a1 = a1;
-    this.a2 = a2;
-    this.b1 = b1;
-    this.b2 = b2;
+function Biquad(b, a) {
+    this.a0 = b[0];
+    this.a1 = b[1];
+    this.a2 = b[2];
+    if (a.length === 2) {
+        this.b1 = a[0];
+        this.b2 = a[1];
+    } else {
+        this.b1 = a[1];
+        this.b2 = a[2];
+    }
     this.x_1 = 0;
     this.x_2 = 0;
     this.y_1 = 0;
     this.y_2 = 0;
 }
 
-Filter.prototype.filter = function(x) {
+Biquad.prototype.filter = function(x) {
     var result = this.a0*x + this.a1*this.x_1 + this.a2*this.x_2 - 
                  this.b1*this.y_1 - this.b2*this.y_2;
     this.x_2 = this.x_1;
@@ -31,6 +36,59 @@ Filter.prototype.filter = function(x) {
     this.y_2 = this.y_1;
     this.y_1 = result;
     return result;
+}
+
+function Allpass() {
+    this.filter = function(x) {
+        return x;
+    }
+}
+
+function IIRn(b, a) {
+    this.b = b;
+    this.a = a;
+    this.zx = new Float32Array(b.length);
+    this.zy = new Float32Array(a.length - 1);
+    this.zxptr = 0;
+    this.zyptr = 0;
+
+    for (var i = 0; i < this.zx.length; i++) this.zx[i] = 0;
+    for (var i = 0; i < this.zy.length; i++) this.zy[i] = 0;
+}
+
+IIRn.prototype.filter = function(x) {
+    var y_ff = 0;
+    var y_fb = 0;
+
+    this.zx[this.zxptr] = x;
+    var xp = this.zxptr;
+    for (let i = 0; i < this.b.length; ++i) {
+        y_ff += this.b[i] * this.zx[xp];
+        if (i + 1 < this.b.length) {
+            xp -= 1;
+            if (xp < 0) {
+                xp = this.zx.length - 1;
+            }
+        }
+    }
+    this.zxptr = xp;
+    
+    var yp = this.zyptr;
+    for (let i = 1; i < this.a.length; ++i) {
+       y_fb += -this.a[i] * this.zy[yp];
+       if (i + 1 < this.a.length) {
+            yp -= 1;
+            if (yp < 0) {
+                yp = this.zy.length - 1;
+            }
+        }
+    }
+    this.zyptr = yp;
+
+    var y = (y_ff + y_fb) / this.a[0];
+    this.zy[yp] = y;
+
+    return y;
 }
 
 function FIR(coef) {
@@ -69,29 +127,14 @@ function Soundnik(ay, timer) {
     this.soundRatio = 0;
     this.soundAccu = 0.0;
 
-    // Cascade biquad of 4th order: Q1=0.54 Q2=1.31
-    // http://www.earlevel.com/main/2016/09/29/cascading-filters/
-    // http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-    // Sample rate 1.5e6, Fc=9500
-    this.filter = new Filter(
-        0.0003817657919193142,
-        0.0007635315838386284,
-        0.0003817657919193142,
-        -1.9274180891347181,
-        0.9289451523023953
-    );
-    this.filter2 = new Filter(
-        0.0003898632033061222,
-        0.0007797264066122444,
-        0.0003898632033061222,
-        -1.9682994292454574,
-        0.9698588820586818
-    );
+    this.filtr_kotov(7);
 
-    //this.debugbuf = new Float32Array(1500000*2);
-    //this.debugidx = 0;
-    //this.download_enable = true;
-    //this.debug_before = 100000; 
+    // for 1.5e6 samplerate 
+    this.debugbuf = new Float32Array(1500000*2);
+    //this.debugbuf = new Float32Array(44100*10);
+    this.debugidx = 0;
+    this.download_enable = true;
+    this.debug_before = 1000; 
 
     /**
      * Offset into sndData for next sound sample.
@@ -106,7 +149,7 @@ function Soundnik(ay, timer) {
         var context = window.AudioContext || window.webkitAudioContext;
         this.audioContext = new context();
         this.sampleRate = this.audioContext.sampleRate;
-        this.soundRatio = this.sampleRate / 1500000;//1497600.0;
+        this.soundRatio = this.sampleRate / 1497600;//1500000;//1497600.0;
 
         this.jsNode = this.audioContext.createScriptProcessor(2048, 0, 2);
         this.gainNode = this.audioContext.createGain();
@@ -163,6 +206,35 @@ function Soundnik(ay, timer) {
         })(this);
 }
 
+Soundnik.prototype.filtr_kotov = function(fc) {
+    var iirCalculator = new CalcCascades();
+    var coefs = iirCalculator.lowpass({
+        order: 2, // cascade 2 biquad filters (max: 12) 
+        characteristic: 'butterworth',
+        Fs: 1.5e6, // sampling frequency 
+        Fc: fc * 1e3, // cutoff frequency
+        gain: 0, // gain for peak, lowshelf and highshelf 
+        preGain: false // adds one constant multiplication for highpass and lowpass 
+                        // k = (1 + cos(omega)) * 0.5 / k = 1 with preGain == false 
+      });
+    this.butt1 = new Biquad(coefs[0].b, coefs[0].a);
+    this.butt2 = new Biquad(coefs[1].b, coefs[1].a);
+};
+
+Soundnik.prototype.filter_cheby2 = function(fc) {
+    // [b,a]=cheby2(2,40,55000/1.5e6); freqz(b,a,1.5e6); printf("const b=[");for x = 1:length(b); printf("%1.14e", b(x)); if x!=length(b) printf(",");endif; endfor; printf("];\n");  printf("const a=[");for x = 1:length(b); printf("%1.14e", a(x)); if x!=length(b) printf(",");endif; endfor; printf("];\n");
+    const b=[9.95164457063040e-03,-1.96403528864328e-02,9.95164457063041e-03];
+    const a=[1.00000000000000e+00,-1.97705063325727e+00,9.77313569512096e-01];
+
+    this.butt1 = new Biquad(b, a);//IIRn(b, a);
+    this.butt2 = new Allpass();
+};
+
+Soundnik.prototype.filter_biquads = function(fc) {
+    this.butt1 = new Biquad([ 0.0016277331770698821, 0.0032554663541397642, 0.0016277331770698821], [ 1, -1.8499679403906526, 0.8564788730989321]);
+    this.butt2 = new Biquad([0.0016991596744121095, 0.003398319348824219, 0.0016991596744121095],[ 1, -1.9311463128898734, 0.9379429515875216]);
+};
+
 Soundnik.prototype.sample = function(samp) {
     var plus1 = (this.sndCount + 1) & this.mask;
     if (plus1 != this.sndReadCount) {
@@ -171,44 +243,53 @@ Soundnik.prototype.sample = function(samp) {
     }
 };
 
-Soundnik.prototype.soundStep = function(step, tapeout) {
+Soundnik.prototype.soundStep = function(step, tapeout, covox) {
     var sound = this.timerwrapper.step(step / 2);
-    sound += this.aywrapper.step2(step);
-    sound += 0.3 * (tapeout - 0.5);
+    sound += tapeout - 0.5;
+
+    // ay step should execute, but the sound can be sampled only 
+    // when needed, no filtering necessary
+    this.aywrapper.step2(step);
+
     // it's okay if sound is not used this time, the state is kept in the filters
-    for (var q = step/2; --q >= 0;) {
-        sound = this.filter2.filter(this.filter.filter(sound));
-    }
-    this.soundAccu += this.soundRatio * step / 2;
+    sound = this.butt2.filter(this.butt1.filter(sound));
+
+    this.soundAccu += this.soundRatio;
     if (this.soundAccu >= 1.0) {
         this.soundAccu -= 1.0;
-
-        sound += Math.random() * 0.002;
+        sound += covox / 256;
+        sound += this.aywrapper.last - 0.5;
+        sound = (sound - 1.5) * 0.3;
+        if (sound > 1.0) { 
+            sound = 1.0; 
+        } else if (sound < -1.0) { 
+            sound = -1.0; 
+        }
         this.sample(sound);
-    }
-
-    /*
+   }
+/*
     if (this.debug_before) {
         if (this.timerwrapper.timer.counters[0].latch_mode == 1) {
             --this.debug_before;
         }
         return;
     }
+
     for (var s = step / 2; --s >= 0;) {
-        this.debugbuf[this.debugidx] = this.timerwrapper.last_sound * 0.3;
+        this.debugbuf[this.debugidx] = debugsound;
         this.debugidx++;
         if (this.debugidx == this.debugbuf.length) {
             if (this.download_enable) {
-                download(this.debugbuf, "sound.raw", "application/octet-stream");
+                __download(this.debugbuf, "sound.raw", "application/octet-stream");
                 this.download_enable = false;
             }
             this.debugidx = 0;
         }
     }
-    */
+*/
+
 };
 
-/*
 // Function to download data to a file
 function __download(data, filename, type) {
     var a = document.createElement("a"),
@@ -227,6 +308,5 @@ function __download(data, filename, type) {
         }, 0); 
     }
 }
-*/
 
 

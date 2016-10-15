@@ -23,7 +23,7 @@ function CounterUnit() {
     this.SetMode(0);
 }
 
-const WRITE_DELAY = 2;//2;//8;
+const WRITE_DELAY = 2;
 const LATCH_DELAY = 1;
 const READ_DELAY = 0;
 
@@ -94,9 +94,9 @@ CounterUnit.prototype.write_value = function(w8) {
     } else if (this.latch_mode == 1) {
         // lsb only
         //this.value = (this.value & 0xff00) | w8;
-        this.value = w8;
-        this.value &= 0xffff;
-        this.loadvalue = this.value;
+        //this.value = w8;
+        //this.value &= 0xffff;
+        this.loadvalue = w8;//this.value;
         this.load = true;
     } else if (this.latch_mode == 2) {
         // msb only 
@@ -189,9 +189,9 @@ CounterUnit.prototype.Count = function(incycles) {
         --this.delay;
         --cycles;
     }
-    if (!cycles) return;
+    if (!cycles) return this.out;
 
-    var scale = cycles;
+    var scale = 1;
 
      switch (this.mode_int) {
         case 0: // Interrupt on terminal count
@@ -201,11 +201,12 @@ CounterUnit.prototype.Count = function(incycles) {
                 this.armed = true;
                 this.load = false;
 
-                if (this.out == 1) {
-                    this.out = 0;
-                    this.value -= cycles;
-                    return delay1; // keep the original "1" for delay time
-                } 
+                //if (this.out == 1) {
+                //    this.out = 0;
+                //    this.value -= cycles;
+                //    //return delay1; // keep the original "1" for delay time
+                //    return 1;
+                //} 
                 this.out = 0; 
             }
             if (this.enabled) {
@@ -345,34 +346,10 @@ function TimerWrapper(timer) {
     this.sound = 0;
     this.average_count = 0;
     this.last_sound = 0;
-    // Cascade biquad of 4th order: Q1=0.54 Q2=1.31
-    // http://www.earlevel.com/main/2016/09/29/cascading-filters/
-    // http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-    // Sample rate 1.5e6, Fc=9500
-    this.filter = new Filter(
-        0.0003817657919193142,
-        0.0007635315838386284,
-        0.0003817657919193142,
-        -1.9274180891347181,
-        0.9289451523023953
-    );
-    this.filter2 = new Filter(
-        0.0003898632033061222,
-        0.0007797264066122444,
-        0.0003898632033061222,
-        -1.9682994292454574,
-        0.9698588820586818
-    );
 }
 
 TimerWrapper.prototype.step = function(cycles) {
     this.last_sound = this.timer.Count(cycles) / cycles;
-//    this.sound += this.last_sound;
-//    this.average_count += cycles;
-
-//    for (var q = cycles; --q >= 0;) {
-//        this.last_sound = this.filter2.filter(this.filter.filter(this.last_sound));
-//    }
     return this.last_sound;
 };
 

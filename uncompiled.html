@@ -385,6 +385,37 @@
         opacity: 0;
         filter: alpha(opacity=0);
     }
+
+    .there-be-dragons {
+        font-family: monospace;
+        color: #f77;
+        background-color: #113;
+        background-image: url("omg-cat.png");
+        background-size: contain;
+        background-repeat:   no-repeat;
+        background-position: right;
+        padding-top:1ex;
+        padding-bottom:1ex;
+        border-radius: 10px;        
+        padding-left: 1em;
+        opacity: 0;
+        filter: alpha(opacity=0);
+        transition: opacity 0.25s ease-in-out;
+    }
+    .there-be-dragons:hover {
+        opacity: 1;
+        filter: alpha(opacity=1);
+        transition: opacity 0.25s ease-in-out;
+    }
+
+    #slider-kotov {
+        display: inline-block;
+        transition: opacity 0.25s ease-in-out;
+    }
+    #slider-kotov:disabled {
+        opacity: 0.1;
+        transition: opacity 0.25s ease-in-out;
+    }
     </style>
 </head>
 
@@ -409,6 +440,7 @@
     <script language="JavaScript" src="./src/rom.js" type="text/javascript">
     <!-- x -->
     </script>
+    <script language="JavaScript" src="./src/fili.js" type="text/javascript"></script>
     <script language="JavaScript" src="./src/sound.js" type="text/javascript"></script>
     <script language="JavaScript" src="./src/fd1793.js" type="text/javascript"></script>
     <script language="JavaScript" src="./src/fddimage.js" type="text/javascript"></script>
@@ -425,6 +457,35 @@
             <div class="fileUpload">
                 <span>Есть свежий ROM?</span>
                 <input class="upload" type="file" id="fileselect" name="fileselect[]"/>
+            </div>
+            <div class="there-be-dragons">
+           <input type=radio name=group value=1 checked="checked"
+                onclick="
+                    var s = document.getElementById('slider-kotov');
+                    s.disabled = false;
+                    s.onchange(s.value);
+                    return true;
+                    ">fili butterworth (adj)<br/>
+                <span>&nbsp;&nbsp;&nbsp;&nbsp;Фильтр котов:</span>
+                <input id="slider-kotov" type="range" min="1" max="20" 
+                    value="7" step="0.25" 
+                    onchange="v06c.soundnik.filtr_kotov(this.value);
+                              document.getElementById('kotov').innerHTML=this.value;
+                              return false;"/>
+                <span id="kotov">7</span> кГц<br/>
+ 
+            <input type=radio name=group value=2
+                onclick="v06c.soundnik.filter_cheby2(0);
+                         var s = document.getElementById('slider-kotov');
+                         s.disabled = true;
+                         return true;
+                ">cheby2(2,40,55000/1.5e6);<br/>
+            <input type=radio name=group value=3
+                onclick="v06c.soundnik.filter_biquads();
+                         var s = document.getElementById('slider-kotov');
+                         s.disabled = true;
+                         return true;
+                ">biquad x2 Fc=20kHz<br/>
             </div>
         </div>
     </div>
@@ -540,11 +601,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                     </div>
                 </div>
                 </div>
-<!--             </div>
-        </div>
- -->    </div>
+    </div>
     <script language="JavaScript" src="./src/main.js" type="text/javascript">
     <!-- x -->
     </script>
-
+</body>
 </html>
