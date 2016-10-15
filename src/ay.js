@@ -41,18 +41,26 @@ AY.prototype.cstep = function(ch) {
     if (++this.ayr[ch + 16] >= (this.ayr[ch << 1] | this.ayr[1 | ch << 1] << 8))
         this.ayr[ch + 16] = 0,
         this.tons ^= 1 << ch;
-    return ((this.ayr[7] >> ch | this.tons >> ch) & (this.ayr[7] >> ch + 3 | this.noiv) & 1) * AY.prototype.amp[this.ayr[8 + ch] & 0x10 ? this.envv : this.ayr[8 + ch] & 0x0f];
+
+    var mode_l  = this.ayr[8 + ch] & 0x10;// channel M bit: 1 = env, 0 = ayr[8+ch] lsb
+    var mixer = this.ayr[7];            // ayr[7] mixer control: x x nC nB nA tC tB tA
+    var tone_ena_l = mixer >> ch;       // tone enable
+    var tone_src = this.tons >> ch;     // tone source
+    var noise_ena_l = mixer >> (ch + 3);// noise enable
+    var noise_gen_op = this.noiv;       // noise source
+    var mix = ((tone_ena_l | tone_src) & (noise_ena_l | noise_gen_op)) & 1;
+    var result = mix * AY.prototype.amp[mode_l ? this.envv : (this.ayr[8 + ch] & 0x0f)];
+    return result;
 };
 
 AY.prototype.estep = function() {
     if (this.envx >> 4) {
-        if (this.ay13 & 1)
+        if (this.ay13 & 1) // ENV.HOLD
             return 7.5 * ((this.ay13 >> 1 ^ this.ay13) & 2);
         this.envx = 0;
         this.ay13 ^= this.ay13 << 1 & 4;
     }
-    return this.ay13 & 4 ? this.envx++
-        : 15 - this.envx++;
+    return this.ay13 & 4 ? this.envx++ : 15 - this.envx++;
 };
 
 AY.prototype.step = function() {
@@ -95,7 +103,8 @@ AY.prototype.write = function(addr, val) {
         this.ayr[this.ayreg] = val & AY.prototype.rmask[this.ayreg];
         if (this.ayreg == 13)
             this.envx = 0,
-            this.ay13 = val & 8 ? 1 | val >> 1 & 2 | val & 4 : val;
+            this.ay13 = val & 0xc == 0x00 ? 9 : val & 0xc == 4 ? 15 : val;
+            // CONT|ATT|ALT|HOLD: 00xx => 1001, 01xx => 1111
     }
 };
 
