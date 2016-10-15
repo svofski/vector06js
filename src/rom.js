@@ -273,7 +273,6 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
             if (target.tagName === "INPUT") {
                 var fileSelectHandler = function(e) {                    
                     var fileselect = document.getElementById(inputs[inputId]);
-                    console.log("fileSelectHandler e=", fileselect.files[0]);
                     if (Loader.prototype.ChooserElement) {
                         Loader.prototype.ChooserElement.style.display = "none";
                         Loader.prototype.ChooserElement = undefined;
@@ -294,24 +293,24 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 target.addEventListener("change", fileSelectHandler, false);
             } else if (target.tagName === "CANVAS") {
                 // try dragover with canvas
-                target.ondragover = function(e) {
+                target["ondragover"] = function(e) {
                     e.preventDefault();
                 };
-                target.ondragenter = function(e) {
+                target["ondragenter"] = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className += " dragover";
                 };
-                target.ondragleave = function(e) {
+                target["ondragleave"] = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className = parent.className.replace(/ dragover/g, "");
                     //parent.className = parent.className.substring(parent.className.length - " dragover".length);
                 };
-                target.ondragend = function(e) {
+                target["ondragend"] = function(e) {
                     e.preventDefault();
                 };
-                target.ondrop = function(e) {
+                target["ondrop"] = function(e) {
                     e.preventDefault();
                     var parent = target.parentNode;
                     parent.className = parent.className.replace(/ dragover/g, "");
