@@ -124,7 +124,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
 
     var buildFddAndLaunch = function(items) {
         // load the рыба first
-        new Loader("roms/ryba.fdd",
+        new Loader("fdd/ryba.fdd",
             function(rom, start) {},
             function() {},
             function(image, start) {
