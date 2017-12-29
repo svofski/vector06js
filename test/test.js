@@ -223,6 +223,7 @@ chain.then(
             return res;
         }
     )).then(
+    new TestCase(false, 'brdtestx.rom', 60)).then(
     new Dummy());
 chain.go();
 

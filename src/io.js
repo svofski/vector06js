@@ -110,6 +110,21 @@ IO.prototype.input = function(port) {
 IO.prototype.output = function(port, w8) {
     this.outport = port;
     this.outbyte = w8;
+
+    /* debug print from guest */
+    switch (port) {
+        case 0x77:  
+                this.str1 += w8.toString(16) + " ";
+                break;
+        case 0x79:
+                if (w8 != 0) {
+                    this.str1 += String.fromCharCode(w8);
+                } else {
+                    console.log(this.str1);
+                    this.str1 = "";
+                }
+                
+    }
 };
 
 IO.prototype.realoutput = function(port, w8) {
@@ -120,7 +135,6 @@ IO.prototype.realoutput = function(port, w8) {
             this.CW = w8;
             ruslat = this.PC & 8;
             if ((this.CW & 0x80) === 0) {
-
                 // port C BSR: 
                 //   bit 0: 1 = set, 0 = reset
                 //   bit 1-3: bit number
@@ -132,7 +146,10 @@ IO.prototype.realoutput = function(port, w8) {
                 }
                 this.ontapeoutchange(this.PC & 1);
             } else {
-                this.PA = this.PB = this.PC = 0;
+                //this.PA = this.PB = this.PC = 0;
+                this.realoutput(1, 0);
+                this.realoutput(2, 0);
+                this.realoutput(3, 0);
             }
             if (((this.PC & 8) != ruslat) && this.onruslat) {
                 this.onruslat((this.PC & 8) === 0);
