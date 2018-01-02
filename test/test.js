@@ -92,7 +92,9 @@ function TestCase(boot, testrom, endframe, kolbax) {
                         function() {
                             toCompare.push({'test':save.name, 'path':filename});
                             if (save.end) {
-                                console.log('TESTCASE END: ' + testrom);
+                                var now = new Date().getTime();
+                                var fps = Math.floor(0.5 + framecount / (now - that.start_time) * 1000.0);
+                                console.log('TESTCASE END: ' + testrom + ' FPS: ' + fps.toString());
                                 if (that.next) {
                                     that.next.go();
                                 } else {
@@ -118,6 +120,7 @@ function TestCase(boot, testrom, endframe, kolbax) {
                     console.log("Read " + num + " bytes");
                     boot ? memory.attach_boot(buffer.slice(0, num)) :
                            memory.init_from_array(buffer.slice(0, num), 256);
+                    that.start_time = new Date().getTime();
                     v06c.BlkSbr(boot);
                 });
             });
