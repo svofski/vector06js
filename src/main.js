@@ -208,8 +208,13 @@
         //     v06c.BlkSbr(false);
         // });
     };
-    if (window.parent['registerHooks']) {
-        window.parent['registerHooks']({'about': about, 
-                                     'blksbr': blksbr,
-                                     'sideload': sideload});
+    try {
+        if (window.parent['registerHooks']) {
+            window.parent['registerHooks']({'about': about, 
+                'blksbr': blksbr,
+                'sideload': sideload});
+        }
+    }
+    catch (error) {
+        console.log("Could not register blksbr/sideload hooks. Cross domain?");
     }
