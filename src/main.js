@@ -126,8 +126,12 @@
     };
 
     io.onruslat = function(on) {
-        if (window.parent['ruslat']) {
-            window.parent['ruslat'](on);
+        try {
+            if (window.parent['ruslat']) {
+                window.parent['ruslat'](on);
+            }
+        } catch (error) {
+            console.log(error);
         }
     }
 
@@ -216,5 +220,6 @@
         }
     }
     catch (error) {
+        console.log(error);
         console.log("Could not register blksbr/sideload hooks. Cross domain?");
     }
