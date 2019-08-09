@@ -26,6 +26,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
     };
 
     var fetchROM2 = function(url, callback, callback_error) {
+        console.log("fetchROM2: ", url, callback, callback_error);
         var name = url['name'];
         if (name) {
             var mem = url['mem'];
@@ -72,6 +73,7 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
     var readData = function(blob, callback, start) {
         var reader = new FileReader();
         reader.addEventListener("loadend", function() {
+            //console.log("readData -> loadend; blob=", blob);
             var rawdata = new Uint8Array(reader.result);
             if (typeof start == "function") {
                 callback(start(rawdata), 0);
@@ -233,6 +235,13 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         Loader.prototype.ChooserElement = parent;
     };
 
+    var callbackWrapper = function(a, b, c)
+    {
+        //buildFddAndLaunch([{ 'filename': name, 'blob': blob }]);
+        console.log("callbackWrapper", a, b, c);
+        callback(a, b, c);
+    };
+
     var tryUnzip = function(url, blob, callback) {
         zip.createReader(new zip.BlobReader(blob), function(reader) {
                 reader.getEntries(function(entries) {
@@ -254,9 +263,13 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 console.log("unzip", error, " - trying as rom or fdd");
                 if (url.toLowerCase().endsWith("fdd")) {
                     readData(blob, callback_fdd, 0);
-                } else {
+                } 
+                if (url.toLowerCase().endsWith("com")) {
+                    buildFddAndLaunch([{'filename': blob.name, 'blob': blob}]);
+                }
+                else {
                     var start = url.toLowerCase().endsWith("r0m") ? 0 : 0x100;
-                    readData(blob, callback, start);
+                    readData(blob, callbackWrapper, start); // <-- wrap callback to fetchROM2() ?
                 }
             });
 

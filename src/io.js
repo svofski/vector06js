@@ -18,6 +18,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     this.PA = 0xff;
     this.PB = 0xff;
     this.PC = 0xff;
+    this.PIA1_last = 0;
     this.CW2 = 0;
     this.PA2 = 0xff;
     this.PB2 = 0xff;
@@ -36,28 +37,39 @@ IO.prototype.input = function(port) {
     var result = 0xff;
     switch (port) {
         case 0x00:
-            //result = 0x80 | this.CW;
             // No read operation of the control word register is allowed
-            result = 0xff;
+            result = this.PIA1_last; // but life is not a paragraph)
             break;
         case 0x01:
-            result = (this.PC & 0x0f) | 0x10 |
-                (this.keyboard.ss ? 0 : (1 << 5)) |
-                (this.keyboard.us ? 0 : (1 << 6)) |
-                (this.keyboard.rus ? 0 : (1 << 7));
+            if (this.CW & 0x80 === 0) { // BSR
+                result = this.PC;
+            } else {     /* PC.low in  ? */
+                var pclow = (this.CW & 0x01) ? 0x0b : (this.PC & 0x0f);
+                         /* PC.high in ? */
+                var pcupp = (this.CW & 0x08) ? 
+                        (0x10 | 
+                        (this.keyboard.ss ? 0 : (1 << 5)) |
+                        (this.keyboard.us ? 0 : (1 << 6)) |
+                        (this.keyboard.rus ? 0 : (1 << 7))) : (this.PC & 0xf0);
+                result = pclow | pcupp;
+                //result = (this.PC & 0x0f) | 0x10 |
+                //    (this.keyboard.ss ? 0 : (1 << 5)) |
+                //    (this.keyboard.us ? 0 : (1 << 6)) |
+                //    (this.keyboard.rus ? 0 : (1 << 7));
+            }
             break;
         case 0x02:
             if ((this.CW & 0x02) !== 0) {
-                result = this.keyboard.Read(~this.PA);
+                result = this.keyboard.Read(~this.PA); // input
             } else {
-                result = 0xff;
+                result = this.PB;       // output
             }
             break;
         case 0x03:
-            if ((this.CW & 0x10) === 0) {
-                result = 0x00;
+            if ((this.CW & 0x10) === 0) { 
+                result = this.PA;       // output
             } else {
-                result = 0xff;
+                result = 0xff;          // input
             }
             break;
 
@@ -132,6 +144,7 @@ IO.prototype.realoutput = function(port, w8) {
     switch (port) {
         // PIA 
         case 0x00:
+            this.PIA1_last = w8;
             this.CW = w8;
             ruslat = this.PC & 8;
             if ((this.CW & 0x80) === 0) {
@@ -146,7 +159,6 @@ IO.prototype.realoutput = function(port, w8) {
                 }
                 this.ontapeoutchange(this.PC & 1);
             } else {
-                //this.PA = this.PB = this.PC = 0;
                 this.realoutput(1, 0);
                 this.realoutput(2, 0);
                 this.realoutput(3, 0);
@@ -159,6 +171,7 @@ IO.prototype.realoutput = function(port, w8) {
             // }
             break;
         case 0x01:
+            this.PIA1_last = w8;
             ruslat = this.PC & 8;
             this.PC = w8;
             this.ontapeoutchange(this.PC & 1);
@@ -167,11 +180,13 @@ IO.prototype.realoutput = function(port, w8) {
             }
             break;
         case 0x02:
+            this.PIA1_last = w8;
             this.PB = w8;
             this.onborderchange(this.PB & 0x0f);
             this.onmodechange((this.PB & 0x10) !== 0);
             break;
         case 0x03:
+            this.PIA1_last = w8;
             this.PA = w8;
             break;
             // PPI2
