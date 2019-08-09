@@ -242,11 +242,11 @@ function Vector06c(cpu, memory, io, ay) {
     this.initCanvas();
 
     // start the dance
-    this.BlkSbr = function(keep_rom) {
+    this.BlkSbr = function(keep_rom, pretend_boot) {
         pause_request = false;
         paused = false;
         this.CPU.pc = 0;
-        this.CPU.sp = 0;
+        this.CPU.sp = pretend_boot ? 0xc300 : 0;
         this.CPU.iff = false;
         if (!keep_rom) {
             this.Memory.detach_boot();

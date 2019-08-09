@@ -146,7 +146,7 @@
             function(rom, start) {
                 v06c.pause(function() {
                     memory.init_from_array(rom, start);
-                    v06c.BlkSbr(false);
+                    v06c.BlkSbr(false, true);
                 });
             },
             // callback_error
