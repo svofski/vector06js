@@ -145,6 +145,7 @@
             // callback
             function(rom, start) {
                 v06c.pause(function() {
+                    v06c.soundnik.restart();
                     memory.init_from_array(rom, start);
                     v06c.BlkSbr(false, true);
                 });

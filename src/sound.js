@@ -206,6 +206,13 @@ function Soundnik(ay, timer) {
         })(this);
 }
 
+Soundnik.prototype.restart = function()
+{
+    if (this.hasAudio) {
+        this.audioContext.resume();
+    }
+};
+
 Soundnik.prototype.filtr_kotov = function(fc) {
     var iirCalculator = new CalcCascades();
     var coefs = iirCalculator.lowpass({
