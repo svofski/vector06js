@@ -14,25 +14,32 @@ function Memory() {
     }
 
     this.mode_stack = false;
-    this.mode_map = false;
+    this.mode_map = 0;
     this.page_map = 0;
     this.page_stack = 0;
 }
 
 Memory.prototype.control_write = function(w8) {
     this.mode_stack = (w8 & 0x10) !== 0;
-    this.mode_map = (w8 & 0x20) !== 0;
-    this.page_map = ((w8) & 3) + 1;
-    this.page_stack = (((w8) & 0xc) >> 2) + 1;
+    this.mode_map = w8 & 0xe0;
+    this.page_map = ((w8 & 3) + 1) << 16;
+    this.page_stack = (((w8 & 0xc) >> 2) + 1 << 16);
 };
 
 Memory.prototype.bigram_select = function(addr, stackrq) {
     if (!(this.mode_map || this.mode_stack)) {
         return addr;
     } else if (this.mode_stack && stackrq !== undefined && stackrq) {
-        return addr + (this.page_stack << 16);
-    } else if (this.mode_map && addr >= 0xa000 && addr < 0xe000) {
-        return addr + (this.page_map << 16);
+        return addr + this.page_stack;
+    //} else if (this.mode_map && addr >= 0xa000 && addr < 0xe000) {
+    }
+    else if ((this.mode_map & 0x20) && (addr >= 0xa000) && (addr <= 0xdfff)) {
+        return addr + this.page_map;
+    }
+    else if ((this.mode_map & 0x40) && (addr >= 0x8000) && (addr <= 0x9fff)) {
+        return addr + this.page_map;
+    } else if ((this.mode_map & 0x80) && (addr >= 0xe000) && (addr <= 0xffff)) {
+        return addr + this.page_map;
     }
     return addr;
 };
