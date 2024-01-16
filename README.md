@@ -5,7 +5,7 @@ This is an original emulator of Vector-06c. It is written in JavaScript by hand,
 
 Standalone version can take rom, r0m, bin, fdd files drag-n-dropped onto itself: https://svofski.github.io/vector06js/
 
-This emulator is integrated into the Vector06c software archive: http://sensi.org/scalar
+This emulator is integrated into the Vector06c software archive: https://caglrc.cc/scalar
 
 It also works as a sandbox execution environment for the Pretty i8080 Assembler: https://svofski.github.io/pretty-8080-assembler/ Try pressing RUN.
 
@@ -15,4 +15,4 @@ For zip handling, it relies on zip.js by Gildas Lormeau https://gildas-lormeau.g
 
 ---
 (c) 2016 Viacheslav Slavinsky 
-http://sensi.org/~svo
+https://caglrc.cc/
