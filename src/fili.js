@@ -963,12 +963,12 @@ var initCalcCoeffs = function (behavior) {
   };
 };
 
-var self = {};
+var ccself = {};
 var CalcCascades = function () {
   for (var k in getCoeffs) {
-    self[k] = initCalcCoeffs(k);
+    ccself[k] = initCalcCoeffs(k);
   }
-  return self;
+  return ccself;
 };
 
 var Fft = function (radix) {
