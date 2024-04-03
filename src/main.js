@@ -160,6 +160,19 @@
                 floppy.loadDsk(0, url, image);
                 //v06c.BlkSbr(true);
             },
+            function(cas, b, c) {
+                console.log("BAS or CAS file", url, cas, b, c);
+                v06c.basfile = new BufferStream(cas);
+                new Loader('basic/bas2993.rom',
+                    function(rom, start) {
+                        v06c.pause(function() {
+                            v06c.soundnik.restart();
+                            memory.init_from_array(rom, start);
+                            v06c.BlkSbr(false, true);
+                        });
+                    }
+                );
+            },
             chooserParent, "chooserpanel"
         ).attachDrop(["fileselect", "canvas"]);
     };

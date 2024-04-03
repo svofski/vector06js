@@ -8,7 +8,7 @@
 "use strict";
 
 /** @constructor */
-function Loader(url, callback, callback_error, callback_fdd, parent_id, container_id) {
+function Loader(url, callback, callback_error, callback_fdd, callback_basic, parent_id, container_id) {
     var str2ab = function(str) {
         var buf = new ArrayBuffer(str.length);
         var bufView = new Uint8Array(buf);
@@ -186,6 +186,10 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         var lower = name.toLowerCase();
         return lower.endsWith("fdd");
     };
+    var isBasic = function(name) {
+        var lower = name.toLowerCase();
+        return lower.endsWith("cas") || lower.endsWith("bas");
+    };
 
     var createChooser = function(items) {
         var parent = document.getElementById(parent_id);
@@ -242,6 +246,13 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
         callback(a, b, c);
     };
 
+    var callbackBasicWrapper = function(a, b, c)
+    {
+        //buildFddAndLaunch([{ 'filename': name, 'blob': blob }]);
+        console.log("callbackBasicWrapper", a, b, c);
+        callback_basic(a, b, c);
+    };
+
     var tryUnzip = function(url, blob, callback) {
         zip.createReader(new zip.BlobReader(blob), function(reader) {
                 reader.getEntries(function(entries) {
@@ -264,8 +275,11 @@ function Loader(url, callback, callback_error, callback_fdd, parent_id, containe
                 if (url.toLowerCase().endsWith("fdd")) {
                     readData(blob, callback_fdd, 0);
                 } 
-                if (url.toLowerCase().endsWith("com")) {
+                else if (url.toLowerCase().endsWith("com")) {
                     buildFddAndLaunch([{'filename': blob.name, 'blob': blob}]);
+                }
+                else if (url.toLowerCase().endsWith("cas")) {
+                    readData(blob, callbackBasicWrapper, -1);
                 }
                 else {
                     var start = url.toLowerCase().endsWith("r0m") ? 0 : 0x100;

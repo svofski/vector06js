@@ -31,6 +31,10 @@ function Vector06c(cpu, memory, io, ay) {
     this.commit_time = -1;
     this.commit_time_pal = -1;
 
+    this.on_first_load_byte = false;
+    this.basfile = null;
+    this.script_interrupt = false;
+
     var w, h, buf8;
     var usingPackedBuffer = false;
     this.displayFrame = function() {
@@ -302,6 +306,13 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
     for (; !this.filler.brk;) {
         this.checkInterrupt();
         this.filler.irq = this.filler.irq && this.irq;
+        if (this.check_breakpoint()) {
+            this.script_break();
+            this.onbreakpoint && this.onbreakpoint();
+            if (this.script_interrupt) {
+                break;
+            }
+        }
         this.CPU.instruction();
         var dbg_op = this.CPU.last_opcode;
         this.instr_time += this.CPU.vcycles;
@@ -325,6 +336,16 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
         this.commit_time -= clk;
         this.commit_time_pal -= clk;
     }
+};
+
+Vector06c.prototype.script_continue = function()
+{
+    this.script_interrupt = false;
+};
+
+Vector06c.prototype.script_break = function()
+{
+    this.script_interrupt = true;
 };
 
 /** @constructor */
