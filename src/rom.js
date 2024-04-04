@@ -104,7 +104,11 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
             lower.endsWith("com")) {
             var start = lower.endsWith("r0m") || lower.endsWith("bin") ? 0 : 0x100;
             extract(entry, callback, start);
-        } else {
+        } 
+        else if (lower.endsWith("cas")) {
+            extract(entry, callback_basic, -1);
+        } 
+        else {
             if (lower.endsWith("fdd")) {
                 extract(entry, callback_fdd,
                     function(rawdata) {
