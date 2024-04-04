@@ -31,9 +31,12 @@ function Vector06c(cpu, memory, io, ay) {
     this.commit_time = -1;
     this.commit_time_pal = -1;
 
-    this.on_first_load_byte = false;
     this.basfile = null;
     this.script_interrupt = false;
+
+    this.autotype = false;
+    this.autotype_sleep = 0;
+    this.autotype_autorelease_key = false;
 
     var w, h, buf8;
     var usingPackedBuffer = false;
@@ -301,6 +304,10 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
             this.soundnik);
     }
     this.filler.reset();
+
+    if (this.autotype_onframe) {
+        this.autotype_onframe();
+    }
 
     this.between = 0;           // cpu cycles counter per interrupt
     for (; !this.filler.brk;) {

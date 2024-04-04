@@ -97,3 +97,50 @@ Vector06c.prototype.hook_2b05 = function()
         this.exit_intercept();
     }
 };
+
+Vector06c.prototype.autotype_onframe = function()
+{
+    if (this.autotype) {
+        if (this.autotype_sleep > 0) {
+            --this.autotype_sleep;
+            return;
+        }
+
+        if (this.autotype_autorelease_key) {
+            keyboard2.applyKey(this.autotype_autorelease_key, true);
+            this.autotype_autorelease_key = false;
+            return;
+        }
+
+        var k = this.autotype.pop();
+        if (this.autotype.length == 0) {
+            this.autotype = false;
+        }
+
+        if (Number.isInteger(k)) {
+            this.autotype_sleep = k;
+            if (this.autotype_sleep > 0) {
+                return;
+            }
+        }
+
+        switch (k) {
+            case 'ShiftDn':
+                keyboard2.applyKey(16, false);
+                break;
+            case 'ShiftUp':
+                keyboard2.applyKey(16, true);
+                break;
+            case 'Return':
+                keyboard2.applyKey(13, false);
+                this.autotype_autorelease_key = 13;
+                this.autotype_sleep = 1;
+                break;
+            default:
+                this.autotype_autorelease_key = k.toUpperCase().charCodeAt(0);
+                keyboard2.applyKey(this.autotype_autorelease_key, false);
+                this.autotype_sleep = 1;
+                break;
+        }
+    }
+};
