@@ -27,6 +27,8 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
 
     var fetchROM2 = function(url, callback, callback_error) {
         console.log("fetchROM2: ", url, callback, callback_error);
+        if (!url || url.trim() === "") return;
+
         var name = url['name'];
         if (name) {
             var mem = url['mem'];
@@ -295,6 +297,15 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
     };
 
     var initDrop = function(inputs) {
+        // a message listener for loading from pretty assembler
+        window.addEventListener("message", (e) => {
+            const {cmd, file} = e.data;
+            if (cmd === "loadfile") {
+                console.log("message loadfile: ", file);
+                tryUnzip(file.name, file, callback);
+            }
+        });
+
         for (let inputId in inputs) {
             let target = document.getElementById(inputs[inputId]);
             if (!target) {
@@ -349,6 +360,9 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                 };
             }
         }
+
+        window.parent.postMessage({type: "ready"}, "*");
+
     };
 
     this.attachDrop = function(fileselect) {
