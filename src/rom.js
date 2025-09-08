@@ -27,7 +27,7 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
 
     var fetchROM2 = function(url, callback, callback_error) {
         console.log("fetchROM2: ", url, callback, callback_error);
-        if (!url || url.trim() === "") return;
+        if (!url) return;
 
         var name = url['name'];
         if (name) {
