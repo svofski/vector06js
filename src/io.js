@@ -42,13 +42,14 @@ IO.prototype.input = function(port) {
             result = this.PIA1_last; // but life is not a paragraph)
             break;
         case 0x01:
-            if (this.CW & 0x80 === 0) { // BSR
-                result = this.PC;
-            } else {     /* PC.low in  ? */
+            //if (this.CW & 0x80 === 0) { // BSR
+            //    result = this.PC;
+            //} else 
+            {     /* PC.low in  ? */
                 var pclow = (this.CW & 0x01) ? 0x0b : (this.PC & 0x0f);
                          /* PC.high in ? */
                 var pcupp = (this.CW & 0x08) ? 
-                        ((this.tape_player.sample << 4) |
+                        (((this.tape_player.sample & 1) << 4) |
                         (this.keyboard.ss ? 0 : (1 << 5)) |
                         (this.keyboard.us ? 0 : (1 << 6)) |
                         (this.keyboard.rus ? 0 : (1 << 7))) : (this.PC & 0xf0);
@@ -142,20 +143,20 @@ IO.prototype.realoutput = function(port, w8) {
         // PIA 
         case 0x00:
             this.PIA1_last = w8;
-            this.CW = w8;
             ruslat = this.PC & 8;
-            if ((this.CW & 0x80) === 0) {
+            if ((w8 & 0x80) === 0) {
                 // port C BSR: 
                 //   bit 0: 1 = set, 0 = reset
                 //   bit 1-3: bit number
-                var bit = (this.CW >> 1) & 7;
-                if ((this.CW & 1) === 1) {
+                var bit = (w8 >> 1) & 7;
+                if ((w8 & 1) === 1) {
                     this.PC |= 1 << bit;
                 } else {
                     this.PC &= ~(1 << bit);
                 }
                 this.ontapeoutchange(this.PC & 1);
             } else {
+                this.CW = w8;
                 this.realoutput(1, 0);
                 this.realoutput(2, 0);
                 this.realoutput(3, 0);

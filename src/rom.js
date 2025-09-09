@@ -305,6 +305,9 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                             v06c.autotype.reverse();
                             v06c.autotype_onfinished = function() {
                                 tape_player.setwav(wavjs); // "this" is wavjs
+                                tape_player.onfinished = function() {
+                                    window.parent.postMessage({type: "tape_stopped"}, "*");
+                                }
                             };
                         });
                     };

@@ -27,6 +27,7 @@ function Keyboard() {
     this.keyDown = function(e) {
         var keyCode = document.all ? event.keyCode : e.which;
         that.cancelKeyEvent(e);
+        //console.log("v06js.keyDown: e=", e, " keyCode=", keyCode);
         if (keyCode === 122 || keyCode === 123) { // F11, F12
             that.onreset(keyCode === 122);
         } else {
@@ -38,6 +39,7 @@ function Keyboard() {
     this.keyUp = function(e) {
         var keyCode = document.all ? event.keyCode : e.which;
         that.cancelKeyEvent(e);
+        //console.log("v06js.keyUp: e=", e, " keyCode=", keyCode);
         if (keyCode === 122 || keyCode === 123) {
             // ignore reset keys
         } else {
@@ -84,13 +86,16 @@ function Keyboard() {
             // shift keys
             case 16:
                 this.ss = !keyup;
+                //console.log("v06js.applyKey: ss keyUp=", keyup, " this.ss=", this.ss);
                 break; // shift/ss
             case 17:
                 this.us = !keyup;
+                //console.log("v06js.applyKey: us keyUp=", keyup, " this.us=", this.us);
                 break; // ctrl/us
             case 117: // F6, cmd == rus
             case 91:
             case 93:
+                //console.log("v06js.applyKey: rus keyUp=", keyup, " this.rus=", this.rus);
                 this.rus = !keyup;
                 break; // cmd/rus
                 // matrix keys
