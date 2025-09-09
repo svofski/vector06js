@@ -115,6 +115,7 @@ Vector06c.prototype.autotype_onframe = function()
         var k = this.autotype.pop();
         if (this.autotype.length == 0) {
             this.autotype = false;
+            this.autotype_onfinished && this.autotype_onfinished();
         }
 
         if (Number.isInteger(k)) {
@@ -135,6 +136,18 @@ Vector06c.prototype.autotype_onframe = function()
                 keyboard2.applyKey(13, false);
                 this.autotype_autorelease_key = 13;
                 this.autotype_sleep = 1;
+                break;
+            case 'F1Dn':
+                keyboard2.applyKey(112, false);
+                break;
+            case 'F1Up':
+                keyboard2.applyKey(112, true);
+                break;
+            case 'BlkVvod':
+                keyboard2.onreset(true);
+                break;
+            case 'BlkSbr':
+                keyboard2.onreset(false);
                 break;
             default:
                 this.autotype_autorelease_key = k.toUpperCase().charCodeAt(0);

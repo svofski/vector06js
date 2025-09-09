@@ -41,9 +41,10 @@
     var fd1793 = Floppy().FD1793;
     floppy = new fd1793();
     //floppy._log = true;
-    io = new IO(keyboard2, timer, memory, ay, floppy);
+    tape_player = new WavPlayer();
+    io = new IO(keyboard2, timer, memory, ay, floppy, tape_player);
     cpu = new I8080(memory, io);
-    v06c = new Vector06c(cpu, memory, io, ay);
+    v06c = new Vector06c(cpu, memory, io, ay, tape_player);
     v06c.frameSkip = 0;
 
     var frameskip = document.getElementById("frameskip");

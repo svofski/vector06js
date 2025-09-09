@@ -250,9 +250,9 @@ Soundnik.prototype.sample = function(samp) {
     }
 };
 
-Soundnik.prototype.soundStep = function(step, tapeout, covox) {
+Soundnik.prototype.soundStep = function(step, tapeout, covox, tapein) {
     var sound = this.timerwrapper.step(step / 2);
-    sound += tapeout - 0.5;
+    sound += tapeout + tapein - 0.5;
 
     // ay step should execute, but the sound can be sampled only 
     // when needed, no filtering necessary

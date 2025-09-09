@@ -47,6 +47,8 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                     view[dst] = mem[src];
                 }
                 makedisk = name.endsWith("com");
+            } else if (name.toLowerCase().endsWith("wav")) {
+                console.log("fetchROM2: wav unhandled");
             }
             var blob = new Blob([ab], { type: "application/octet-stream" });
             if (makedisk) {
@@ -286,6 +288,26 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                 }
                 else if (url.toLowerCase().endsWith("cas")) {
                     readData(blob, callbackBasicWrapper, -1);
+                }
+                else if (url.toLowerCase().endsWith("wav")) {
+                    console.log("tryUnzip->error->wav");
+                    let wavjs = new wav(blob);
+                    wavjs.onloadend = function() {
+                        console.log("wavjs.onloadend", this);
+                        this.slice(0, this.getDuration(), function(buf) {
+                            this.getSamples(buf);
+
+                            // we need to reset with F1 key held down
+                            //keyboard2.applyKey(112, false);
+                            keyboard2.onreset(true);
+                            //v06c.BlkSbr(false, false);
+                            v06c.autotype = ['F1Dn', 50, 'F1Up'];
+                            v06c.autotype.reverse();
+                            v06c.autotype_onfinished = function() {
+                                tape_player.setwav(wavjs); // "this" is wavjs
+                            };
+                        });
+                    };
                 }
                 else {
                     var start = url.toLowerCase().endsWith("r0m") ? 0 : 0x100;

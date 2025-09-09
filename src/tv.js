@@ -14,7 +14,7 @@ const FIRST_VISIBLE_LINE = 312 - SCREEN_HEIGHT;
 const CENTER_OFFSET = 120;
 
 /** @constructor */
-function Vector06c(cpu, memory, io, ay) {
+function Vector06c(cpu, memory, io, ay, tape_player) {
     var pause_request = false;
     var onpause;
     var paused = true;
@@ -27,6 +27,7 @@ function Vector06c(cpu, memory, io, ay) {
     this.IO = io;
 
     this.soundnik = new Soundnik(ay, this.IO.Timer);
+    this.tape_player = tape_player;
 
     this.commit_time = -1;
     this.commit_time_pal = -1;
@@ -37,6 +38,7 @@ function Vector06c(cpu, memory, io, ay) {
     this.autotype = false;
     this.autotype_sleep = 0;
     this.autotype_autorelease_key = false;
+    this.autotype_onfinished = null;
 
     var w, h, buf8;
     var usingPackedBuffer = false;
@@ -300,8 +302,7 @@ Vector06c.prototype.checkInterrupt = function() {
 
 Vector06c.prototype.oneInterrupt = function(updateScreen) {
     if (!this.filler) {
-        this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes,
-            this.soundnik);
+        this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes);
     }
     this.filler.reset();
 
@@ -335,8 +336,9 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
         let wrap = this.instr_time - (clk >> 2);
         let step = this.instr_time - wrap;
         for (let g = step/2; --g >= 0;) {
-            this.soundnik.soundStep(2, this.tapeout, this.IO.PA2);
+            this.soundnik.soundStep(2, this.tapeout, this.IO.PA2, this.tape_player.sample);
         }
+        this.tape_player.advance(step);
 
         this.between += step;
         this.instr_time = wrap;
@@ -356,12 +358,11 @@ Vector06c.prototype.script_break = function()
 };
 
 /** @constructor */
-function PixelFiller(bmp, palette, io, bytes, son) {
+function PixelFiller(bmp, palette, io, bytes) {
     this.bmp = bmp;
     this.palette = palette;
     this.IO = io;
     this.bytes = bytes;
-    this.son = son;
     this.mem32 = new Uint32Array(bytes.buffer);
     this.pixel32 = 0;  // 4 bytes of bit planes
     this.border_index = 0;

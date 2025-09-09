@@ -1,7 +1,7 @@
 "use strict";
 
 /** @constructor */
-function IO(keyboard, timer, kvaz, ay, fdc) {
+function IO(keyboard, timer, kvaz, ay, fdc, tape_player) {
     this.iff = false;
     this.Palette = new Uint32Array(16);
     this.keyboard = keyboard;
@@ -9,6 +9,7 @@ function IO(keyboard, timer, kvaz, ay, fdc) {
     this.Kvaz = kvaz;
     this.fdc = fdc;
     this.ay = ay;
+    this.tape_player = tape_player;
     this.onmodechange = function(mode) {};
     this.onborderchange = function(border) {};
     this.ontapeoutchange = function(tape) {};
@@ -47,15 +48,11 @@ IO.prototype.input = function(port) {
                 var pclow = (this.CW & 0x01) ? 0x0b : (this.PC & 0x0f);
                          /* PC.high in ? */
                 var pcupp = (this.CW & 0x08) ? 
-                        (0x10 | 
+                        ((this.tape_player.sample << 4) |
                         (this.keyboard.ss ? 0 : (1 << 5)) |
                         (this.keyboard.us ? 0 : (1 << 6)) |
                         (this.keyboard.rus ? 0 : (1 << 7))) : (this.PC & 0xf0);
                 result = pclow | pcupp;
-                //result = (this.PC & 0x0f) | 0x10 |
-                //    (this.keyboard.ss ? 0 : (1 << 5)) |
-                //    (this.keyboard.us ? 0 : (1 << 6)) |
-                //    (this.keyboard.rus ? 0 : (1 << 7));
             }
             break;
         case 0x02:
