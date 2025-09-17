@@ -107,6 +107,7 @@ Vector06c.prototype.autotype_onframe = function()
         }
 
         if (this.autotype_autorelease_key) {
+            console.log("autotype: autorelease key: ", this.autotype_autorelease_key);
             keyboard2.applyKey(this.autotype_autorelease_key, true);
             this.autotype_autorelease_key = false;
             return;
@@ -120,7 +121,7 @@ Vector06c.prototype.autotype_onframe = function()
 
         if (Number.isInteger(k)) {
             this.autotype_sleep = k;
-            if (this.autotype_sleep > 0) {
+            if (this.autotype_sleep >= 0) {
                 return;
             }
         }

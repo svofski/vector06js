@@ -170,7 +170,7 @@
                             v06c.soundnik.restart();
                             memory.init_from_array(rom, start);
                             v06c.BlkSbr(false, true);
-                            v06c.autotype = [100, 'c','l','o','a','d','ShiftDn','2','2','ShiftUp','Return',100,'r','u','n','Return'];
+                            v06c.autotype = [100, 'c','l','o','a','d','ShiftDn','2','2','ShiftUp','Return',100,'r','u','n','Return', 0];
                             v06c.autotype.reverse();
                         });
                     }
