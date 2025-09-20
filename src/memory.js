@@ -17,9 +17,11 @@ function Memory() {
     this.mode_map = 0;
     this.page_map = 0;
     this.page_stack = 0;
+    this.cw = 0;
 }
 
 Memory.prototype.control_write = function(w8) {
+    this.cw = w8;
     this.mode_stack = (w8 & 0x10) !== 0;
     this.mode_map = w8 & 0xe0;
     this.page_map = ((w8 & 3) + 1) << 16;

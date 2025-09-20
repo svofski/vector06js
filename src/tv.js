@@ -35,6 +35,8 @@ function Vector06c(cpu, memory, io, ay, tape_player) {
     this.basfile = null;
     this.script_interrupt = false;
 
+    this.dbg = null;
+
     this.autotype = false;
     this.autotype_sleep = 0;
     this.autotype_autorelease_key = false;
@@ -300,17 +302,21 @@ Vector06c.prototype.checkInterrupt = function() {
     }
 };
 
+// execute one frame or until breakpoint
 Vector06c.prototype.oneInterrupt = function(updateScreen) {
+    if (this.dbg && this.dbg.stopped) {
+        return;
+    }
+
     if (!this.filler) {
         this.filler = new PixelFiller(this.bmp,this.Palette,this.IO,this.Memory.bytes);
+        this.filler.reset();
     }
-    this.filler.reset();
 
     if (this.autotype_onframe) {
         this.autotype_onframe();
     }
 
-    this.between = 0;           // cpu cycles counter per interrupt
     for (; !this.filler.brk;) {
         this.checkInterrupt();
         this.filler.irq = this.filler.irq && this.irq;
@@ -318,8 +324,12 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
             this.script_break();
             this.onbreakpoint && this.onbreakpoint();
             if (this.script_interrupt) {
-                break;
+                return;
             }
+        }
+        if (this.dbg && this.dbg.check_breakpoint()) {
+            this.dbg.enter_breakpoint();
+            return;
         }
         this.CPU.instruction();
         var dbg_op = this.CPU.last_opcode;
@@ -345,6 +355,8 @@ Vector06c.prototype.oneInterrupt = function(updateScreen) {
         this.commit_time -= clk;
         this.commit_time_pal -= clk;
     }
+    this.filler.reset();
+    this.between = 0;           // cpu cycles counter per interrupt
 };
 
 Vector06c.prototype.script_continue = function()

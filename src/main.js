@@ -47,6 +47,8 @@
     v06c = new Vector06c(cpu, memory, io, ay, tape_player);
     v06c.frameSkip = 0;
 
+    dbg = new Debugger(v06c);
+
     var frameskip = document.getElementById("frameskip");
     v06c.onframeskip = function(skip, miss) {
         frameskip.innerText = v06c.frameSkip + " " + miss;
@@ -105,14 +107,15 @@
     }
     boot = undefined;
 
+    // TODO: make focus pause optional
     _onfocus = function() {
         v06c.soundnik.mute(false);
         v06c.resume();
     };
     _onblur = function() {
-        v06c.soundnik.mute(true);
-        v06c.pause(function() {
-        });
+        //v06c.soundnik.mute(true);
+        //v06c.pause(function() {
+        //});
     };
     window.addEventListener('load', function() {
         window.addEventListener('focus', _onfocus);

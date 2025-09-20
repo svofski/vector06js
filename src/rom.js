@@ -329,6 +329,9 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                 console.log("message loadfile: ", file);
                 tryUnzip(file.name, file, callback);
             }
+            if (cmd === "debugger") {
+                dbg.command(e.data);
+            }
         });
 
         for (let inputId in inputs) {
