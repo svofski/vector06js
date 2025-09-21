@@ -197,6 +197,9 @@ class Debugger
             case "pc":
                 cpu.pc = value;
                 break;
+            case "iff":
+                cpu.iff = value ? true : false;
+                break;
         }
     }
 

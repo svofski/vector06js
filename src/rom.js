@@ -250,14 +250,14 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
     var callbackWrapper = function(a, b, c)
     {
         //buildFddAndLaunch([{ 'filename': name, 'blob': blob }]);
-        console.log("callbackWrapper", a, b, c);
+        //console.log("callbackWrapper", a, b, c);
         callback(a, b, c);
     };
 
     var callbackBasicWrapper = function(a, b, c)
     {
         //buildFddAndLaunch([{ 'filename': name, 'blob': blob }]);
-        console.log("callbackBasicWrapper", a, b, c);
+        //console.log("callbackBasicWrapper", a, b, c);
         callback_basic(a, b, c);
     };
 
