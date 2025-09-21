@@ -62,7 +62,12 @@ class Debugger
                     this.enter_breakpoint();
                 }
                 break;
-
+            case "write-byte":
+                if (this.stopped) {
+                    this.write_byte(data.addr, data.value);
+                    this.enter_breakpoint();
+                }
+                break;
         }
     }
 
@@ -201,6 +206,11 @@ class Debugger
                 cpu.iff = value ? true : false;
                 break;
         }
+    }
+
+    write_byte(addr, value)
+    {
+        this.v06c.Memory.write(addr, value, false);
     }
 
     immediate_breakpoint()
