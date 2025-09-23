@@ -47,25 +47,30 @@ class Debugger
             case "set-breakpoints":
                 this.set_breakpoints(data.addrs);
                 if (this.stopped) {
-                    this.enter_breakpoint();
+                    this.send_ok();
                 }
                 break;
             case "del-breakpoints":
                 this.clear_breakpoints(data.addrs);
                 if (this.stopped) {
-                    this.enter_breakpoint();
+                    this.send_ok();
                 }
                 break;
             case "set-register":
                 if (this.stopped) {
                     this.set_register(data.regname, data.value);
-                    this.enter_breakpoint();
+                    if (data.regname === "pc") {
+                        this.enter_breakpoint();
+                    }
+                    else {
+                        this.send_ok();
+                    }
                 }
                 break;
             case "write-byte":
                 if (this.stopped) {
                     this.write_byte(data.addr, data.value);
-                    this.enter_breakpoint();
+                    this.send_ok();
                 }
                 break;
         }
@@ -248,6 +253,11 @@ class Debugger
     {
         this.stopped = true;
         window.parent.postMessage({type: "debugger", what: "stopped", "cpu_state": this.get_cpu_state()});
+    }
+
+    send_ok()
+    {
+        window.parent.postMessage({type: "debugger", what: "ok", "cpu_state": this.get_cpu_state()});
     }
 
     static call_like_insns = "CALL|CZ|CNZ|CP|CM|CC|CNC|CPO|CPE|RST";
