@@ -329,8 +329,61 @@ function Loader(url, callback, callback_error, callback_fdd, callback_basic, par
                 console.log("message loadfile: ", file);
                 tryUnzip(file.name, file, callback);
             }
-            if (cmd === "debugger") {
+            else if (cmd === "debugger") {
                 dbg.command(e.data);
+            }
+            else if (cmd === "input") {
+                switch (e.data.subcmd) {
+                    case "help":
+                        {
+                            let data = [
+                                {
+                                    name_guest: 'СС',
+                                    name_host: 'Shift',
+                                    keycode: 16,
+                                },
+                                {
+                                    name_guest: 'УС',
+                                    name_host: 'Ctrl',
+                                    keycode: 17,
+                                },
+                                {
+                                    name_guest: 'РУС/LAT',
+                                    name_host: 'F6',
+                                    keycode: 117,
+                                },
+                                {
+                                    name_guest: 'БЛК+ВВОД',
+                                    name_host: 'F11',
+                                    keycode: 122,
+                                },
+                                {
+                                    name_guest: 'БЛК+СБР',
+                                    name_host: 'F12',
+                                    keycode: 123,
+                                }
+                            ];
+                            window.parent.postMessage({type: "input", what: "keys", data: data});
+                        }
+                        break;
+                    case "keydown":
+                        {
+                            let keycode = e.data.keycode;
+                            if (keycode === 122 || keycode === 123) { // F11, F12
+                                keyboard2.onreset(keycode === 122);
+                            }
+                            else {
+                                keyboard2.applyKey(keycode, false);
+                            }
+                        }
+                        break;
+                    case "keyup":
+                        {
+                            let keycode = e.data.keycode;
+                            keyboard2.applyKey(keycode, true);
+                        }
+                        break;
+                }
             }
         });
 
